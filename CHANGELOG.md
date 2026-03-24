@@ -76,6 +76,17 @@
   - `camera_view_proj()` — compute view-projection matrix from kiran Camera.
   - `collect_entity_visuals()` — gather entity positions with selection highlighting.
   - Uses soorat's `draw_into_pass()`, `egui_bridge`, and `primitives` APIs.
+- **animation_panel** — animation timeline editor.
+  - `AnimationEditor` with playhead, play/pause/stop, speed control.
+  - Load soorat `AnimationClip` into editor representation.
+  - `add_keyframe()`, `remove_keyframe()` with sorted insertion.
+  - Timeline UI with track lanes, keyframe diamonds, playhead scrubber.
+- **terrain_panel** — terrain/landscape editing.
+  - `TerrainEditor` with grid-based heightmap and brush system.
+  - 5 brush tools: Raise, Lower, Smooth, Flatten, Paint.
+  - Brush radius, strength, falloff. Flatten target height.
+  - Heightmap preview (top-down grayscale), height range stats.
+  - `to_terrain_config()` bridges to soorat's `TerrainConfig`.
 - 36 criterion benchmarks covering all modules (including scene_edit).
 
 ### Changed

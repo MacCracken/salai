@@ -1620,16 +1620,6 @@ checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 [[package]]
 name = "hisab"
 version = "0.22.4"
-dependencies = [
- "glam",
- "serde",
- "thiserror 2.0.18",
- "tracing",
-]
-
-[[package]]
-name = "hisab"
-version = "0.22.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c69ef9a41596ee017fb670eb47a281c292362096c35bc44a4ae77b7b6502b266"
 dependencies = [
@@ -1947,7 +1937,7 @@ version = "0.23.3"
 dependencies = [
  "anyhow",
  "clap",
- "hisab 0.22.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hisab",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
@@ -2130,13 +2120,12 @@ dependencies = [
 
 [[package]]
 name = "muharrir"
-version = "0.23.3"
+version = "0.23.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b5c034b6777ffa8572d43875ea2a89ab3251c4dead266091b5e7654b86d37c9"
+checksum = "8c17f295eff2e05669f013309eb30cb0952297451260ce10a530d10151964f72"
 dependencies = [
  "abaco",
  "ai-hwaccel",
- "bhava",
  "libro",
  "serde",
  "serde_json",
@@ -3072,7 +3061,7 @@ dependencies = [
  "dhvani",
  "eframe",
  "egui",
- "hisab 0.22.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hisab",
  "kiran",
  "muharrir",
  "ranga",
@@ -3345,7 +3334,7 @@ version = "0.23.3"
 dependencies = [
  "bytemuck",
  "gltf",
- "hisab 0.22.4",
+ "hisab",
  "image",
  "pollster",
  "serde",

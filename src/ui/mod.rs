@@ -3,6 +3,7 @@
 //! The UI module renders the editor interface using egui/eframe. It reads from
 //! and writes to [`EditorApp`] state, and delegates to submodules for each panel.
 
+pub mod animation_panel;
 pub mod asset_browser;
 pub mod console_panel;
 mod hierarchy_panel;
@@ -10,6 +11,7 @@ mod inspector_panel;
 mod menu;
 pub mod personality_panel;
 pub mod profiler_panel;
+pub mod terrain_panel;
 mod toolbar;
 mod viewport_panel;
 

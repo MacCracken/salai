@@ -4,7 +4,12 @@ use crate::editor::{EditorApp, PlayState};
 use crate::viewport::{GizmoMode, ViewportState};
 
 /// Render the editor toolbar.
-pub fn toolbar(ui: &mut egui::Ui, editor: &mut EditorApp, viewport: &mut ViewportState) {
+pub fn toolbar(
+    ui: &mut egui::Ui,
+    editor: &mut EditorApp,
+    viewport: &mut ViewportState,
+    history: &mut muharrir::History,
+) {
     ui.horizontal(|ui| {
         // Play/Pause/Stop controls
         ui.group(|ui| {
@@ -38,6 +43,22 @@ pub fn toolbar(ui: &mut egui::Ui, editor: &mut EditorApp, viewport: &mut Viewpor
                     tracing::debug!("stepped one frame");
                 }
             });
+        });
+
+        ui.separator();
+
+        // Add entity button
+        ui.group(|ui| {
+            if ui.button("+ Entity").clicked() {
+                let name = format!("Entity {}", editor.entity_count() + 1);
+                crate::scene_edit::add_entity(
+                    &mut editor.world,
+                    &mut editor.tracked_entities,
+                    history,
+                    &name,
+                );
+                tracing::info!(name, "entity added from toolbar");
+            }
         });
 
         ui.separator();

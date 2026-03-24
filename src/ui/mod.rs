@@ -47,12 +47,12 @@ impl eframe::App for SalaiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Menu bar
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
-            menu::menu_bar(ui, &mut self.editor.state, &mut self.history);
+            menu::menu_bar(ui, &mut self.editor, &mut self.history);
         });
 
         // Toolbar below menu
         egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
-            toolbar::toolbar(ui, &mut self.editor, &mut self.viewport);
+            toolbar::toolbar(ui, &mut self.editor, &mut self.viewport, &mut self.history);
         });
 
         // Hierarchy panel (left)
@@ -132,7 +132,7 @@ mod tests {
     fn salai_app_with_entities() {
         let mut app = SalaiApp::new(None);
         let e1 = app.editor.spawn_entity();
-        let e2 = app.editor.spawn_entity();
+        let _e2 = app.editor.spawn_entity();
         assert_eq!(app.entities().len(), 2);
 
         // Select and verify

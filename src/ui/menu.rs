@@ -1,10 +1,11 @@
 //! Editor menu bar — File, Edit, View menus.
 
-use crate::editor::EditorState;
+use crate::editor::{EditorApp, EditorState};
 use muharrir::History;
 
 /// Render the menu bar.
-pub fn menu_bar(ui: &mut egui::Ui, state: &mut EditorState, history: &mut History) {
+pub fn menu_bar(ui: &mut egui::Ui, editor: &mut EditorApp, history: &mut History) {
+    let state = &mut editor.state;
     egui::menu::bar(ui, |ui| {
         // File menu
         ui.menu_button("File", |ui| {
@@ -15,7 +16,14 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut EditorState, history: &mut Histor
             }
             if ui.button("Save Scene").clicked() {
                 if let Some(path) = &state.scene_path {
-                    tracing::info!(path, "save scene requested");
+                    let scene = crate::scene_edit::extract_scene(
+                        &editor.world,
+                        &editor.tracked_entities,
+                        &path.clone(),
+                    );
+                    if let Err(e) = crate::scene_edit::save_scene(&scene, path) {
+                        tracing::error!(error = %e, "failed to save scene");
+                    }
                 } else {
                     tracing::warn!("no scene path set — use Save As");
                 }

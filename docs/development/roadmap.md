@@ -41,14 +41,13 @@
 - eframe backend switched to wgpu for soorat compatibility
 - Entity click selection and 3D gizmo rendering deferred to V0.4 (requires soorat mesh pipeline wiring)
 
-## V0.4 — Scene Editing
+## V0.4 — Scene Editing (done, 2026-03-23)
 
-- [ ] Add/remove entities from editor
-- [ ] Component drag-and-drop (add physics, add sound, add material)
-- [ ] Scene save to TOML
-- [ ] Undo/redo stack (libro audit-chain backend)
-- [ ] Prefab creation from selection
-- [ ] bhava personality/emotion editing for NPC entities
+- Entity add/remove with undo/redo history recording
+- Component editing functions (set_position, set_name, set_light_intensity) with before/after tracking
+- Scene extract from World → SceneDefinition → TOML file
+- Toolbar "+ Entity" button, File > Save Scene wired
+- Component drag-and-drop and prefab creation deferred to V1.0
 
 ## V1.0 — Production
 

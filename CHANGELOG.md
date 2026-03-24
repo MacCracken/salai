@@ -40,8 +40,15 @@
   - Camera direction indicator and origin marker.
   - Gizmo mode indicator (color-coded Move/Rotate/Scale).
   - Camera info overlay (distance, yaw, pitch).
+- **scene_edit** module — entity CRUD and scene serialization with undo/redo.
+  - `add_entity()`, `set_position()`, `set_name()`, `set_light_intensity()` — all recorded in history.
+  - `extract_scene()` — serialize world state back to kiran `SceneDefinition`.
+  - `save_scene()` / `scene_to_toml()` — write scene to TOML file.
+  - Toolbar "+ Entity" button wired to `add_entity`.
+  - File > Save Scene wired to `extract_scene` + `save_scene`.
 - `EditorApp::despawn_entity()` with selection cleanup.
 - Switched eframe backend from glow to wgpu for soorat compatibility.
+- `muharrir` dependency updated from path to crates.io `0.23`.
 - 33 criterion benchmarks covering all modules.
 
 ### Changed

@@ -12,6 +12,7 @@ pub mod editor;
 pub mod hierarchy;
 pub mod inspector;
 pub mod personality;
+pub mod scene_edit;
 pub mod texture;
 pub mod ui;
 pub mod viewport;

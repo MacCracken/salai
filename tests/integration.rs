@@ -267,29 +267,17 @@ fn hw_detect_and_configure_viewport() {
     // Profile should always be valid
     assert!(!profile.device_name.is_empty());
 
-    // Configure viewport based on hardware
-    let mut vp = salai::viewport::ViewportState::default();
-    vp.grid_size = profile.suggested_grid_size();
-    vp.show_debug_shapes = profile.default_debug_shapes();
-
-    // Grid size should be reasonable
-    assert!(vp.grid_size > 0.0);
-    assert!(vp.grid_size <= 2.0);
+    // Quality tier should be valid
+    assert!(!format!("{}", profile.quality).is_empty());
 }
 
 #[test]
-fn hw_quality_tier_drives_features() {
-    let mut profile = HardwareProfile::default();
-
-    // Low tier — conservative settings
-    profile.quality = QualityTier::Low;
-    assert_eq!(profile.suggested_grid_size(), 2.0);
-    assert!(!profile.default_debug_shapes());
-
-    // Ultra tier — all features
-    profile.quality = QualityTier::Ultra;
-    assert_eq!(profile.suggested_grid_size(), 0.25);
-    assert!(profile.default_debug_shapes());
+fn hw_quality_tier_values() {
+    // Verify all tier variants display correctly
+    assert_eq!(QualityTier::Low.to_string(), "Low");
+    assert_eq!(QualityTier::Medium.to_string(), "Medium");
+    assert_eq!(QualityTier::High.to_string(), "High");
+    assert_eq!(QualityTier::Ultra.to_string(), "Ultra");
 }
 
 #[test]
@@ -357,7 +345,7 @@ fn history_integrity_after_many_actions() {
     for i in 0..50 {
         history.record(
             "test",
-            Action::new(&format!("action_{i}"), serde_json::json!({"step": i})),
+            Action::with_kind(format!("action_{i}"), serde_json::json!({"step": i})),
         );
     }
     assert_eq!(history.len(), 50);

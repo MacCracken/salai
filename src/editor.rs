@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 /// Editor play state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum PlayState {
     /// Editor mode — scene is paused, entities are editable.
     #[default]
@@ -59,6 +60,7 @@ impl EditorState {
     }
 
     /// Get the selected entity, reconstructed with its original generation.
+    #[must_use]
     pub fn selected(&self) -> Option<kiran::Entity> {
         self.selected_entity.map(kiran::Entity::from_id)
     }
@@ -78,6 +80,8 @@ impl EditorState {
     }
 
     /// Is the simulation running?
+    #[must_use]
+    #[inline]
     pub fn is_playing(&self) -> bool {
         self.play_state == PlayState::Playing
     }
@@ -90,6 +94,7 @@ pub struct EditorApp {
 }
 
 impl EditorApp {
+    #[must_use]
     pub fn new() -> Self {
         let mut world = World::new();
         world.insert_resource(GameClock::with_timestep(1.0 / 60.0));
@@ -119,6 +124,8 @@ impl EditorApp {
     }
 
     /// Entity count in the world.
+    #[must_use]
+    #[inline]
     pub fn entity_count(&self) -> usize {
         self.world.entity_count()
     }
@@ -294,6 +301,35 @@ mod tests {
             let decoded: PlayState = serde_json::from_str(&json).unwrap();
             assert_eq!(state, decoded);
         }
+    }
+
+    #[test]
+    fn editor_state_serde_with_selection() {
+        let mut state = EditorState::default();
+        let entity = kiran::Entity::new(10, 5);
+        state.select(entity);
+        state.play_state = PlayState::Paused;
+        state.show_inspector = false;
+        state.scene_path = Some("level.toml".into());
+
+        let json = serde_json::to_string(&state).unwrap();
+        let decoded: EditorState = serde_json::from_str(&json).unwrap();
+
+        let sel = decoded.selected().unwrap();
+        assert_eq!(sel.index(), 10);
+        assert_eq!(sel.generation(), 5);
+        assert_eq!(decoded.play_state, PlayState::Paused);
+        assert!(!decoded.show_inspector);
+        assert_eq!(decoded.scene_path.as_deref(), Some("level.toml"));
+    }
+
+    #[test]
+    fn editor_app_spawn_and_count() {
+        let mut app = EditorApp::new();
+        app.world.spawn();
+        app.world.spawn();
+        app.world.spawn();
+        assert_eq!(app.entity_count(), 3);
     }
 
     #[test]

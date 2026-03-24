@@ -67,10 +67,11 @@ impl NpcPersonality {
     }
 
     /// Gather inspector-displayable info about the personality.
+    #[must_use]
     pub fn inspector_summary(&self) -> PersonalitySummary {
         let active = self.active_traits();
         PersonalitySummary {
-            name: self.profile.name.as_str().to_string(),
+            name: self.profile.name.clone(),
             trait_count: active.len(),
             dominant_group: dominant_group(&self.profile),
             mood_label: mood_label(&self.mood),
@@ -306,5 +307,47 @@ mod tests {
     #[test]
     fn all_levels_count() {
         assert_eq!(ALL_LEVELS.len(), 5);
+    }
+
+    #[test]
+    fn mood_label_sad() {
+        let mut mood = MoodVector::neutral();
+        mood.joy = -0.8;
+        assert_eq!(mood_label(&mood), "Sad");
+    }
+
+    #[test]
+    fn mood_label_excited() {
+        let mut mood = MoodVector::neutral();
+        mood.arousal = 0.7;
+        assert_eq!(mood_label(&mood), "Excited");
+    }
+
+    #[test]
+    fn blend_extremes() {
+        let mut a = NpcPersonality::new("A");
+        let b = NpcPersonality::new("B");
+        a.set_trait(TraitKind::Confidence, TraitLevel::Highest);
+
+        // t=0.0 should keep A's traits
+        let blend_a = a.blend(&b, 0.0);
+        assert_eq!(
+            blend_a.get_trait(TraitKind::Confidence),
+            TraitLevel::Highest
+        );
+
+        // t=1.0 should take B's traits
+        let blend_b = a.blend(&b, 1.0);
+        assert_eq!(
+            blend_b.get_trait(TraitKind::Confidence),
+            TraitLevel::Balanced
+        );
+    }
+
+    #[test]
+    fn group_average_default_is_zero() {
+        let npc = NpcPersonality::new("Default");
+        assert_eq!(npc.group_average(TraitGroup::Social), 0.0);
+        assert_eq!(npc.group_average(TraitGroup::Cognitive), 0.0);
     }
 }

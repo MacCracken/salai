@@ -14,6 +14,7 @@ pub struct HierarchyNode {
 
 /// Build the hierarchy tree from the world.
 /// Returns only root entities (those without a Parent component).
+#[must_use]
 pub fn build_hierarchy(world: &World, entities: &[kiran::Entity]) -> Vec<HierarchyNode> {
     let mut roots = Vec::new();
 
@@ -57,6 +58,7 @@ fn build_node(world: &World, entity: kiran::Entity, depth: usize) -> HierarchyNo
 }
 
 /// Flatten a hierarchy tree into a depth-first list for display.
+#[must_use]
 pub fn flatten_hierarchy(nodes: &[HierarchyNode]) -> Vec<(usize, kiran::Entity, &str)> {
     let mut result = Vec::new();
     for node in nodes {

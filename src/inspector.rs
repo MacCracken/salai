@@ -11,8 +11,9 @@ pub struct ComponentInfo {
 }
 
 /// Gather component information for an entity.
+#[must_use]
 pub fn inspect_entity(world: &World, entity: kiran::Entity) -> Vec<ComponentInfo> {
-    let mut components = Vec::new();
+    let mut components = Vec::with_capacity(5);
 
     if let Some(name) = world.get_component::<Name>(entity) {
         components.push(ComponentInfo {

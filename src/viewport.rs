@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 /// Gizmo mode for transform manipulation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum GizmoMode {
     #[default]
     Translate,

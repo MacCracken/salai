@@ -23,10 +23,10 @@ soorat = { path = "../soorat" }
 
 # UI
 egui = "0.31"
-eframe = { version = "0.31", default-features = false, features = ["default_fonts", "glow", "persistence"] }
+eframe = { version = "0.31", default-features = false, features = ["default_fonts", "wgpu", "persistence"] }
 
 # Ecosystem
-muharrir = { path = "../muharrir", features = ["full"] }
+muharrir = { version = "0.23", features = ["full"] }
 bhava = "0.23"
 dhvani = "0.22"
 ranga = "0.21"

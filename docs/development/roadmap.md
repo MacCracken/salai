@@ -31,14 +31,15 @@
 - Menu bar (File open/save, Edit undo/redo, View panel toggles)
 - EditorApp entity tracking (spawn_entity, entities)
 
-## V0.3 — Viewport
+## V0.3 — Viewport (done, 2026-03-23)
 
-- [ ] soorat-based 3D viewport in egui
-- [ ] ai-hwaccel capability detection → adaptive render quality
-- [ ] Orbit camera mouse interaction
-- [ ] Entity selection by clicking in viewport
-- [ ] Gizmo rendering (translate arrows, rotate rings, scale handles)
-- [ ] Grid overlay rendering
+- Interactive viewport panel with egui painter rendering
+- Orbit camera mouse interaction (drag to rotate, scroll to zoom)
+- Grid overlay with distance-adaptive cell sizing
+- Gizmo mode indicator (color-coded per mode)
+- Camera info overlay (distance, yaw, pitch)
+- eframe backend switched to wgpu for soorat compatibility
+- Entity click selection and 3D gizmo rendering deferred to V0.4 (requires soorat mesh pipeline wiring)
 
 ## V0.4 — Scene Editing
 

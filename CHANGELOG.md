@@ -34,6 +34,14 @@
   - Central viewport placeholder (3D rendering in V0.3).
   - `expr_field()` widget for expression-evaluable numeric inputs.
 - `EditorApp::spawn_entity()` and `entities()` for tracked entity management.
+- **viewport_panel** — interactive 2D viewport with egui painter.
+  - Orbit camera: left-drag to rotate, scroll to zoom.
+  - Grid overlay with distance-adaptive cell size.
+  - Camera direction indicator and origin marker.
+  - Gizmo mode indicator (color-coded Move/Rotate/Scale).
+  - Camera info overlay (distance, yaw, pitch).
+- `EditorApp::despawn_entity()` with selection cleanup.
+- Switched eframe backend from glow to wgpu for soorat compatibility.
 - 33 criterion benchmarks covering all modules.
 
 ### Changed

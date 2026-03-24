@@ -7,6 +7,7 @@ mod hierarchy_panel;
 mod inspector_panel;
 mod menu;
 mod toolbar;
+mod viewport_panel;
 
 use crate::editor::EditorApp;
 
@@ -81,17 +82,7 @@ impl eframe::App for SalaiApp {
         // Central viewport area
         egui::CentralPanel::default().show(ctx, |ui| {
             if self.editor.state.show_viewport {
-                ui.heading("Viewport");
-                ui.label(format!(
-                    "Camera distance: {:.1}",
-                    self.viewport.orbit.distance
-                ));
-                ui.label(format!("Gizmo: {:?}", self.viewport.gizmo_mode));
-                if self.viewport.show_grid {
-                    ui.label(format!("Grid: {:.1}", self.viewport.grid_size));
-                }
-                ui.separator();
-                ui.label("3D viewport will render here (V0.3 — soorat integration)");
+                viewport_panel::viewport_panel(ui, &mut self.viewport);
             } else {
                 ui.centered_and_justified(|ui| {
                     ui.label("Viewport hidden");
@@ -135,5 +126,32 @@ mod tests {
     fn all_entities_empty_world() {
         let app = SalaiApp::new(None);
         assert!(app.entities().is_empty());
+    }
+
+    #[test]
+    fn salai_app_with_entities() {
+        let mut app = SalaiApp::new(None);
+        let e1 = app.editor.spawn_entity();
+        let e2 = app.editor.spawn_entity();
+        assert_eq!(app.entities().len(), 2);
+
+        // Select and verify
+        app.editor.state.select(e1);
+        assert_eq!(app.editor.state.selected(), Some(e1));
+
+        // Despawn clears selection
+        app.editor.despawn_entity(e1).unwrap();
+        assert_eq!(app.entities().len(), 1);
+        assert!(app.editor.state.selected().is_none());
+    }
+
+    #[test]
+    fn salai_app_viewport_state() {
+        let app = SalaiApp::new(None);
+        assert!(app.viewport.show_grid);
+        assert_eq!(
+            app.viewport.gizmo_mode,
+            crate::viewport::GizmoMode::Translate
+        );
     }
 }

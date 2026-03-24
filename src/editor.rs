@@ -92,7 +92,7 @@ pub struct EditorApp {
     pub state: EditorState,
     pub world: World,
     /// Tracked entity list for hierarchy display. Updated on spawn/despawn/load.
-    tracked_entities: Vec<kiran::Entity>,
+    pub(crate) tracked_entities: Vec<kiran::Entity>,
 }
 
 impl EditorApp {
@@ -143,6 +143,16 @@ impl EditorApp {
     #[inline]
     pub fn entity_count(&self) -> usize {
         self.world.entity_count()
+    }
+
+    /// Despawn an entity and remove it from tracking.
+    pub fn despawn_entity(&mut self, entity: kiran::Entity) -> anyhow::Result<()> {
+        self.world.despawn(entity)?;
+        self.tracked_entities.retain(|&e| e != entity);
+        if self.state.selected() == Some(entity) {
+            self.state.deselect();
+        }
+        Ok(())
     }
 
     /// Get the list of tracked entities (alive ones only).
@@ -351,6 +361,44 @@ mod tests {
         app.world.spawn();
         app.world.spawn();
         assert_eq!(app.entity_count(), 3);
+    }
+
+    #[test]
+    fn spawn_entity_tracks() {
+        let mut app = EditorApp::new();
+        let e1 = app.spawn_entity();
+        let e2 = app.spawn_entity();
+        assert_eq!(app.entities().len(), 2);
+        assert_eq!(app.entity_count(), 2);
+        assert!(app.entities().contains(&e1));
+        assert!(app.entities().contains(&e2));
+    }
+
+    #[test]
+    fn despawn_entity_untracks() {
+        let mut app = EditorApp::new();
+        let e = app.spawn_entity();
+        assert_eq!(app.entities().len(), 1);
+        app.despawn_entity(e).unwrap();
+        assert!(app.entities().is_empty());
+        assert_eq!(app.entity_count(), 0);
+    }
+
+    #[test]
+    fn despawn_clears_selection() {
+        let mut app = EditorApp::new();
+        let e = app.spawn_entity();
+        app.state.select(e);
+        assert_eq!(app.state.selected(), Some(e));
+        app.despawn_entity(e).unwrap();
+        assert!(app.state.selected().is_none());
+    }
+
+    #[test]
+    fn despawn_invalid_entity() {
+        let mut app = EditorApp::new();
+        let fake = kiran::Entity::new(999, 0);
+        assert!(app.despawn_entity(fake).is_err());
     }
 
     #[test]

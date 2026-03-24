@@ -59,11 +59,11 @@ impl eframe::App for SalaiApp {
             egui::SidePanel::left("hierarchy")
                 .default_width(200.0)
                 .show(ctx, |ui| {
-                    let entities = self.editor.entities().to_vec();
+                    let entities = &self.editor.tracked_entities;
                     hierarchy_panel::hierarchy_panel(
                         ui,
                         &self.editor.world,
-                        &entities,
+                        entities,
                         &mut self.editor.state,
                     );
                 });

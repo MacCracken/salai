@@ -27,12 +27,7 @@ impl Default for ViewportState {
     fn default() -> Self {
         let mut camera = Camera::default();
         let orbit = OrbitController::default();
-        // Apply orbit to camera
-        let x = orbit.distance * orbit.pitch.cos() * orbit.yaw.sin();
-        let y = orbit.distance * orbit.pitch.sin();
-        let z = orbit.distance * orbit.pitch.cos() * orbit.yaw.cos();
-        camera.position = hisab::Vec3::new(x, y, z);
-        camera.target = hisab::Vec3::ZERO;
+        orbit.apply(&mut camera);
 
         Self {
             camera,
@@ -140,5 +135,64 @@ mod tests {
         assert!(vp.orbit.yaw.is_finite());
         assert!(vp.orbit.pitch.is_finite());
         assert!(vp.camera.position.x.is_finite());
+    }
+
+    #[test]
+    fn viewport_grid_toggle() {
+        let mut vp = ViewportState::default();
+        assert!(vp.show_grid);
+        vp.show_grid = false;
+        assert!(!vp.show_grid);
+    }
+
+    #[test]
+    fn viewport_debug_shapes_toggle() {
+        let mut vp = ViewportState::default();
+        assert!(vp.show_debug_shapes);
+        vp.show_debug_shapes = false;
+        assert!(!vp.show_debug_shapes);
+    }
+
+    #[test]
+    fn viewport_grid_size() {
+        let mut vp = ViewportState::default();
+        assert_eq!(vp.grid_size, 1.0);
+        vp.grid_size = 0.5;
+        assert_eq!(vp.grid_size, 0.5);
+    }
+
+    #[test]
+    fn gizmo_mode_all_variants_serde() {
+        for mode in [GizmoMode::Translate, GizmoMode::Rotate, GizmoMode::Scale] {
+            let json = serde_json::to_string(&mode).unwrap();
+            let decoded: GizmoMode = serde_json::from_str(&json).unwrap();
+            assert_eq!(mode, decoded);
+        }
+    }
+
+    #[test]
+    fn viewport_zoom_in_then_out() {
+        let mut vp = ViewportState::default();
+        let original = vp.orbit.distance;
+        vp.zoom(5.0);
+        assert!(vp.orbit.distance < original);
+        vp.zoom(-5.0);
+        assert!(vp.orbit.distance > vp.orbit.min_distance);
+    }
+
+    #[test]
+    fn viewport_camera_position_updates_on_rotate() {
+        let mut vp = ViewportState::default();
+        let start_pos = vp.camera.position;
+        vp.rotate(100.0, 0.0);
+        assert_ne!(vp.camera.position.x, start_pos.x);
+    }
+
+    #[test]
+    fn viewport_camera_target_stays_zero() {
+        let mut vp = ViewportState::default();
+        vp.rotate(50.0, 30.0);
+        vp.zoom(2.0);
+        assert_eq!(vp.camera.target, hisab::Vec3::ZERO);
     }
 }

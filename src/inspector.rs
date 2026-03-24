@@ -4,7 +4,7 @@ use kiran::World;
 use kiran::scene::{LightComponent, Material, Name, Position, Tags};
 
 /// Component info for display in the inspector.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComponentInfo {
     pub name: &'static str,
     pub details: String,
@@ -155,5 +155,91 @@ mod tests {
         assert!(names.contains(&"Light"));
         assert!(names.contains(&"Tags"));
         assert!(names.contains(&"Material"));
+    }
+
+    #[test]
+    fn inspect_name_only() {
+        let mut world = World::new();
+        let e = world.spawn();
+        world.insert_component(e, Name("Solo".into())).unwrap();
+        let info = inspect_entity(&world, e);
+        assert_eq!(info.len(), 1);
+        assert_eq!(info[0].name, "Name");
+    }
+
+    #[test]
+    fn inspect_position_only() {
+        let mut world = World::new();
+        let e = world.spawn();
+        world.insert_component(e, Position(Vec3::ZERO)).unwrap();
+        let info = inspect_entity(&world, e);
+        assert_eq!(info.len(), 1);
+        assert_eq!(info[0].name, "Position");
+        assert!(info[0].details.contains("0.00"));
+    }
+
+    #[test]
+    fn inspect_light_only() {
+        let mut world = World::new();
+        let e = world.spawn();
+        world
+            .insert_component(e, LightComponent { intensity: 1.5 })
+            .unwrap();
+        let info = inspect_entity(&world, e);
+        assert_eq!(info.len(), 1);
+        assert_eq!(info[0].name, "Light");
+        assert!(info[0].details.contains("1.50"));
+    }
+
+    #[test]
+    fn inspect_tags_only() {
+        let mut world = World::new();
+        let e = world.spawn();
+        world.insert_component(e, Tags(vec!["x".into()])).unwrap();
+        let info = inspect_entity(&world, e);
+        assert_eq!(info.len(), 1);
+        assert_eq!(info[0].name, "Tags");
+        assert!(info[0].details.contains("x"));
+    }
+
+    #[test]
+    fn inspect_material_no_texture() {
+        let mut world = World::new();
+        let e = world.spawn();
+        world
+            .insert_component(
+                e,
+                Material {
+                    color: [0.0, 0.0, 0.0, 1.0],
+                    texture: None,
+                },
+            )
+            .unwrap();
+        let info = inspect_entity(&world, e);
+        assert_eq!(info.len(), 1);
+        assert!(info[0].details.contains("none"));
+    }
+
+    #[test]
+    fn inspect_empty_tags() {
+        let mut world = World::new();
+        let e = world.spawn();
+        world.insert_component(e, Tags(vec![])).unwrap();
+        let info = inspect_entity(&world, e);
+        assert_eq!(info.len(), 1);
+        assert_eq!(info[0].details, "");
+    }
+
+    #[test]
+    fn inspect_negative_position() {
+        let mut world = World::new();
+        let e = world.spawn();
+        world
+            .insert_component(e, Position(Vec3::new(-1.5, -2.5, -3.5)))
+            .unwrap();
+        let info = inspect_entity(&world, e);
+        assert!(info[0].details.contains("-1.50"));
+        assert!(info[0].details.contains("-2.50"));
+        assert!(info[0].details.contains("-3.50"));
     }
 }

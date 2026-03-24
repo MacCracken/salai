@@ -172,4 +172,87 @@ mod tests {
         assert_eq!(tree.len(), 1);
         assert!(tree[0].name.contains("Entity"));
     }
+
+    #[test]
+    fn flatten_empty_tree() {
+        let tree: Vec<HierarchyNode> = Vec::new();
+        let flat = flatten_hierarchy(&tree);
+        assert!(flat.is_empty());
+    }
+
+    #[test]
+    fn hierarchy_many_siblings() {
+        let mut world = World::new();
+        let root = world.spawn();
+        world.insert_component(root, Name("Root".into())).unwrap();
+
+        let mut all = vec![root];
+        for i in 0..20 {
+            let child = world.spawn();
+            world
+                .insert_component(child, Name(format!("S{i}")))
+                .unwrap();
+            set_parent(&mut world, child, root).unwrap();
+            all.push(child);
+        }
+
+        let tree = build_hierarchy(&world, &all);
+        assert_eq!(tree.len(), 1);
+        assert_eq!(tree[0].children.len(), 20);
+
+        let flat = flatten_hierarchy(&tree);
+        assert_eq!(flat.len(), 21); // root + 20 children
+        // All children at depth 1
+        for entry in &flat[1..] {
+            assert_eq!(entry.0, 1);
+        }
+    }
+
+    #[test]
+    fn hierarchy_dead_child_filtered() {
+        let mut world = World::new();
+        let root = world.spawn();
+        let alive = world.spawn();
+        let dead = world.spawn();
+        world.insert_component(root, Name("Root".into())).unwrap();
+        world.insert_component(alive, Name("Alive".into())).unwrap();
+        world.insert_component(dead, Name("Dead".into())).unwrap();
+        set_parent(&mut world, alive, root).unwrap();
+        set_parent(&mut world, dead, root).unwrap();
+        world.despawn(dead).unwrap();
+
+        let tree = build_hierarchy(&world, &[root, alive, dead]);
+        assert_eq!(tree.len(), 1);
+        assert_eq!(tree[0].children.len(), 1);
+        assert_eq!(tree[0].children[0].name, "Alive");
+    }
+
+    #[test]
+    fn hierarchy_empty_entities_list() {
+        let world = World::new();
+        let tree = build_hierarchy(&world, &[]);
+        assert!(tree.is_empty());
+    }
+
+    #[test]
+    fn flatten_preserves_depth_first_order() {
+        let mut world = World::new();
+        let root = world.spawn();
+        let c1 = world.spawn();
+        let c1_1 = world.spawn();
+        let c2 = world.spawn();
+        world.insert_component(root, Name("R".into())).unwrap();
+        world.insert_component(c1, Name("C1".into())).unwrap();
+        world.insert_component(c1_1, Name("C1_1".into())).unwrap();
+        world.insert_component(c2, Name("C2".into())).unwrap();
+        set_parent(&mut world, c1, root).unwrap();
+        set_parent(&mut world, c1_1, c1).unwrap();
+        set_parent(&mut world, c2, root).unwrap();
+
+        let tree = build_hierarchy(&world, &[root, c1, c1_1, c2]);
+        let flat = flatten_hierarchy(&tree);
+        let names: Vec<&str> = flat.iter().map(|f| f.2).collect();
+        assert_eq!(names, vec!["R", "C1", "C1_1", "C2"]);
+        assert_eq!(flat[2].0, 2); // C1_1 at depth 2
+    }
 }

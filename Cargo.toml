@@ -25,6 +25,10 @@ soorat = { path = "../soorat" }
 egui = "0.31"
 eframe = { version = "0.31", default-features = false, features = ["default_fonts", "glow", "persistence"] }
 
+# Ecosystem
+abaco = "0.22"
+ai-hwaccel = "0.23"
+
 # Core
 hisab = "0.22"
 serde = { version = "1", features = ["derive"] }

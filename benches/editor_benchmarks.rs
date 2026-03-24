@@ -519,6 +519,70 @@ fn bench_audio_waveform(c: &mut Criterion) {
 
 criterion_group!(audio_benches, bench_inspect_audio, bench_audio_waveform);
 
+// ---------------------------------------------------------------------------
+// Scene editing benchmarks
+// ---------------------------------------------------------------------------
+
+fn bench_scene_add_entity(c: &mut Criterion) {
+    c.bench_function("scene_add_entity", |b| {
+        let mut world = kiran::World::new();
+        let mut tracked = Vec::new();
+        let mut history = muharrir::History::new();
+        b.iter(|| {
+            let _e = salai::scene_edit::add_entity(&mut world, &mut tracked, &mut history, "Bench");
+            black_box(&tracked);
+        });
+    });
+}
+
+fn bench_scene_extract_50(c: &mut Criterion) {
+    let mut world = kiran::World::new();
+    let entities: Vec<_> = (0..50)
+        .map(|i| {
+            let e = world.spawn();
+            world
+                .insert_component(e, kiran::scene::Name(format!("E{i}")))
+                .unwrap();
+            world
+                .insert_component(
+                    e,
+                    kiran::scene::Position(hisab::Vec3::new(i as f32, 0.0, 0.0)),
+                )
+                .unwrap();
+            e
+        })
+        .collect();
+
+    c.bench_function("scene_extract_50_entities", |b| {
+        b.iter(|| black_box(salai::scene_edit::extract_scene(&world, &entities, "Bench")));
+    });
+}
+
+fn bench_scene_to_toml(c: &mut Criterion) {
+    let mut world = kiran::World::new();
+    let entities: Vec<_> = (0..10)
+        .map(|i| {
+            let e = world.spawn();
+            world
+                .insert_component(e, kiran::scene::Name(format!("E{i}")))
+                .unwrap();
+            e
+        })
+        .collect();
+    let scene = salai::scene_edit::extract_scene(&world, &entities, "Bench");
+
+    c.bench_function("scene_to_toml_10_entities", |b| {
+        b.iter(|| black_box(salai::scene_edit::scene_to_toml(&scene)));
+    });
+}
+
+criterion_group!(
+    scene_benches,
+    bench_scene_add_entity,
+    bench_scene_extract_50,
+    bench_scene_to_toml,
+);
+
 criterion_main!(
     editor_benches,
     inspector_benches,
@@ -530,4 +594,5 @@ criterion_main!(
     personality_benches,
     texture_benches,
     audio_benches,
+    scene_benches,
 );

@@ -49,7 +49,7 @@
 - `EditorApp::despawn_entity()` with selection cleanup.
 - Switched eframe backend from glow to wgpu for soorat compatibility.
 - `muharrir` dependency updated from path to crates.io `0.23`.
-- 33 criterion benchmarks covering all modules.
+- 36 criterion benchmarks covering all modules (including scene_edit).
 
 ### Changed
 - **Migrated to muharrir** — `expr`, `hw`, `history` modules now re-exported from `muharrir` shared editor library instead of local copies. Removes direct deps on abaco, ai-hwaccel, libro.

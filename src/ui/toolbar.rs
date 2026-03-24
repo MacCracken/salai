@@ -51,7 +51,7 @@ pub fn toolbar(
         ui.group(|ui| {
             if ui.button("+ Entity").clicked() {
                 let name = format!("Entity {}", editor.entity_count() + 1);
-                crate::scene_edit::add_entity(
+                let _entity = crate::scene_edit::add_entity(
                     &mut editor.world,
                     &mut editor.tracked_entities,
                     history,

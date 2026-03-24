@@ -30,6 +30,7 @@ impl NpcPersonality {
     }
 
     /// Get a personality trait level.
+    #[must_use]
     pub fn get_trait(&self, kind: TraitKind) -> TraitLevel {
         self.profile.get_trait(kind)
     }
@@ -40,11 +41,13 @@ impl NpcPersonality {
     }
 
     /// Get the average trait value for a group (-1.0 to 1.0).
+    #[must_use]
     pub fn group_average(&self, group: TraitGroup) -> f32 {
         self.profile.group_average(group)
     }
 
     /// Get traits that differ from Balanced.
+    #[must_use]
     pub fn active_traits(&self) -> Vec<(TraitKind, TraitLevel)> {
         self.profile
             .active_traits()
@@ -54,11 +57,13 @@ impl NpcPersonality {
     }
 
     /// Compatibility score with another NPC (0.0 to 1.0).
+    #[must_use]
     pub fn compatibility(&self, other: &NpcPersonality) -> f32 {
         self.profile.compatibility(&other.profile)
     }
 
     /// Blend two personalities together (0.0 = self, 1.0 = other).
+    #[must_use]
     pub fn blend(&self, other: &NpcPersonality, t: f32) -> NpcPersonality {
         NpcPersonality {
             profile: self.profile.blend(&other.profile, t),

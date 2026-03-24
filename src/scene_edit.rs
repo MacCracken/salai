@@ -7,6 +7,7 @@ use kiran::scene::{EntityDef, LightComponent, Material, Name, Position, SceneDef
 use muharrir::history::{Action, History};
 
 /// Add an entity to the world and record the action in history.
+#[must_use]
 pub fn add_entity(
     world: &mut World,
     tracked: &mut Vec<kiran::Entity>,
@@ -177,6 +178,7 @@ fn extract_entity_def(world: &World, entity: kiran::Entity) -> EntityDef {
 }
 
 /// Serialize a scene to TOML string.
+#[must_use]
 pub fn scene_to_toml(scene: &SceneDefinition) -> Result<String, toml::ser::Error> {
     toml::to_string_pretty(scene)
 }

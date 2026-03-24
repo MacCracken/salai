@@ -124,6 +124,7 @@ impl EditorApp {
     }
 
     /// Spawn an entity and track it.
+    #[must_use]
     pub fn spawn_entity(&mut self) -> kiran::Entity {
         let entity = self.world.spawn();
         self.tracked_entities.push(entity);

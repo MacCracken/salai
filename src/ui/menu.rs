@@ -1,6 +1,6 @@
 //! Editor menu bar — File, Edit, View menus.
 
-use crate::editor::{EditorApp, EditorState};
+use crate::editor::EditorApp;
 use muharrir::History;
 
 /// Render the menu bar.

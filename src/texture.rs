@@ -87,6 +87,7 @@ pub fn inspect_texture(data: &[u8], width: u32, height: u32) -> TextureInfo {
 ///
 /// Returns a normalized histogram with the specified number of bins,
 /// or `None` if the buffer is invalid.
+#[must_use]
 pub fn luminance_histogram(
     data: Vec<u8>,
     width: u32,

@@ -49,14 +49,20 @@
 - `EditorApp::despawn_entity()` with selection cleanup.
 - Switched eframe backend from glow to wgpu for soorat compatibility.
 - `muharrir` dependency updated from path to crates.io `0.23`.
+- **asset_browser** panel — scan directories, filter by type (IMG/SND/SCN), select and preview assets.
+- **console_panel** — ring-buffer log viewer with severity filtering (DBG/INF/WRN/ERR), auto-scroll, clear.
+- **profiler_panel** — FPS counter, frame time graph with 60fps target line, entity/history stats.
+- **Multi-selection** — `select_add()` (shift-click), `select_toggle()` (ctrl-click), `selected_all()`, `is_selected()`, `selection_count()`. Hierarchy panel wired for shift/ctrl multi-select.
 - 36 criterion benchmarks covering all modules (including scene_edit).
 
 ### Changed
 - **Migrated to muharrir** — `expr`, `hw`, `history` modules now re-exported from `muharrir` shared editor library instead of local copies. Removes direct deps on abaco, ai-hwaccel, libro.
-- `EditorState::selected_entity` is now private — use `select()`/`selected()` API. Preserves entity generation to prevent stale selection after recycling.
+- `EditorState` selection refactored from `Option<u64>` to `Vec<u64>` for multi-selection support.
+- `EditorState::selected_entity` replaced by `select()`, `select_add()`, `select_toggle()`, `selected()`, `selected_all()`, `is_selected()` API.
 - `ViewportState::default()` now delegates to `OrbitController::apply()` instead of duplicating orbit math.
 - `ComponentInfo` now derives `PartialEq, Eq`.
 - `lib.rs` re-exports all key types from submodules.
+- eframe backend switched from glow to wgpu for soorat GPU texture sharing.
 
 ## [0.1.0] - 2026-03-23
 

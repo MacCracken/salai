@@ -3,19 +3,34 @@
 //! The UI module renders the editor interface using egui/eframe. It reads from
 //! and writes to [`EditorApp`] state, and delegates to submodules for each panel.
 
+pub mod asset_browser;
+pub mod console_panel;
 mod hierarchy_panel;
 mod inspector_panel;
 mod menu;
+pub mod profiler_panel;
 mod toolbar;
 mod viewport_panel;
 
 use crate::editor::EditorApp;
+use asset_browser::AssetBrowser;
+use console_panel::Console;
+use profiler_panel::Profiler;
 
 /// The eframe application wrapper that drives the editor UI.
 pub struct SalaiApp {
     pub editor: EditorApp,
     pub viewport: crate::viewport::ViewportState,
     pub history: muharrir::History,
+    pub console: Console,
+    pub profiler: Profiler,
+    pub asset_browser: AssetBrowser,
+    /// Whether the console panel is visible.
+    pub show_console: bool,
+    /// Whether the profiler panel is visible.
+    pub show_profiler: bool,
+    /// Whether the asset browser panel is visible.
+    pub show_assets: bool,
 }
 
 impl SalaiApp {
@@ -33,6 +48,12 @@ impl SalaiApp {
             editor,
             viewport: crate::viewport::ViewportState::default(),
             history: muharrir::History::new(),
+            console: Console::default(),
+            profiler: Profiler::default(),
+            asset_browser: AssetBrowser::default(),
+            show_console: false,
+            show_profiler: false,
+            show_assets: false,
         }
     }
 
@@ -47,7 +68,16 @@ impl eframe::App for SalaiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Menu bar
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
-            menu::menu_bar(ui, &mut self.editor, &mut self.history);
+            menu::menu_bar(
+                ui,
+                &mut self.editor,
+                &mut self.history,
+                menu::PanelFlags {
+                    show_console: &mut self.show_console,
+                    show_profiler: &mut self.show_profiler,
+                    show_assets: &mut self.show_assets,
+                },
+            );
         });
 
         // Toolbar below menu
@@ -79,6 +109,43 @@ impl eframe::App for SalaiApp {
                 });
         }
 
+        // Bottom panels
+        if self.show_console || self.show_profiler || self.show_assets {
+            egui::TopBottomPanel::bottom("bottom_panels")
+                .default_height(200.0)
+                .show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        // Tab buttons
+                        if ui.selectable_label(self.show_console, "Console").clicked() {
+                            self.show_console = !self.show_console;
+                        }
+                        if ui
+                            .selectable_label(self.show_profiler, "Profiler")
+                            .clicked()
+                        {
+                            self.show_profiler = !self.show_profiler;
+                        }
+                        if ui.selectable_label(self.show_assets, "Assets").clicked() {
+                            self.show_assets = !self.show_assets;
+                        }
+                    });
+                    ui.separator();
+
+                    if self.show_console {
+                        console_panel::console_panel(ui, &mut self.console);
+                    } else if self.show_profiler {
+                        profiler_panel::profiler_panel(
+                            ui,
+                            &self.profiler,
+                            self.editor.entity_count(),
+                            self.history.len(),
+                        );
+                    } else if self.show_assets {
+                        asset_browser::asset_browser_panel(ui, &mut self.asset_browser);
+                    }
+                });
+        }
+
         // Central viewport area
         egui::CentralPanel::default().show(ctx, |ui| {
             if self.editor.state.show_viewport {
@@ -89,6 +156,11 @@ impl eframe::App for SalaiApp {
                 });
             }
         });
+
+        // Track frame time
+        let dt = ctx.input(|i| i.predicted_dt as f64);
+        self.profiler.record_frame(dt);
+        self.console.tick();
 
         // Step simulation if playing
         if self.editor.state.is_playing() {

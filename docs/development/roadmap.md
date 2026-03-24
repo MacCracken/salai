@@ -2,59 +2,24 @@
 
 > Game editor for the Kiran engine.
 
-## V0.1 — Scaffold (done, 2026-03-23)
+## Completed
 
-- EditorApp with play/pause/step state machine
-- Entity inspector (Name, Position, Light, Tags, Material)
-- Hierarchy builder with parent-child tree + depth-first flatten
-- ViewportState with orbit camera, gizmo modes, grid/debug toggles
-- CLI binary with scene loading
+| Milestone | Date |
+|-----------|------|
+| V0.1 — Scaffold | 2026-03-23 |
+| P0 — Ecosystem Integration (abaco, ai-hwaccel, libro, bhava, ranga, dhvani) | 2026-03-23 |
+| V0.2 — egui Integration | 2026-03-23 |
+| V0.3 — Viewport | 2026-03-23 |
+| V0.4 — Scene Editing | 2026-03-23 |
+| V1.0 — Production | 2026-03-23 |
 
-## P0 — Ecosystem Integration (priority)
+## Next
 
-> Wire in AGNOS crates that reduce future workload across the roadmap.
-
-- [x] **ranga** — image processing pipeline for texture/asset previews and viewport overlays
-- [x] **dhvani** — audio engine hookup for play-mode sound and audio asset preview
-- [x] **abaco** — expression evaluator in inspector property fields (e.g. `2*pi`, unit math)
-- [x] **ai-hwaccel** — detect GPU capabilities, auto-configure viewport quality/feature set
-- [x] **libro** — audit-chain backend for undo/redo history (feeds into V0.4)
-- [x] **bhava** — emotion/personality editing panel for NPC/character authoring
-
-## V0.2 — egui Integration (done, 2026-03-23)
-
-- eframe event loop with SalaiApp wrapper
-- Inspector panel with component display (editable fields in V0.4)
-  - expr_field widget ready for numeric expression input
-- Hierarchy panel with collapsible entity tree and click-to-select
-- Toolbar (play/pause/step, gizmo mode selector, entity count status)
-- Menu bar (File open/save, Edit undo/redo, View panel toggles)
-- EditorApp entity tracking (spawn_entity, entities)
-
-## V0.3 — Viewport (done, 2026-03-23)
-
-- Interactive viewport panel with egui painter rendering
-- Orbit camera mouse interaction (drag to rotate, scroll to zoom)
-- Grid overlay with distance-adaptive cell sizing
-- Gizmo mode indicator (color-coded per mode)
-- Camera info overlay (distance, yaw, pitch)
-- eframe backend switched to wgpu for soorat compatibility
-- Entity click selection and 3D gizmo rendering deferred to V0.4 (requires soorat mesh pipeline wiring)
-
-## V0.4 — Scene Editing (done, 2026-03-23)
-
-- Entity add/remove with undo/redo history recording
-- Component editing functions (set_position, set_name, set_light_intensity) with before/after tracking
-- Scene extract from World → SceneDefinition → TOML file
-- Toolbar "+ Entity" button, File > Save Scene wired
-- Component drag-and-drop and prefab creation deferred to V1.0
-
-## V1.0 — Production
-
-- [ ] Asset browser (textures, models, sounds)
-  - [ ] ranga-powered texture thumbnails and preview
-  - [ ] dhvani-powered audio waveform preview and playback
-- [ ] Console/log panel
-- [ ] Performance profiler panel
-- [ ] Multi-selection and group operations
-- [ ] Publish to crates.io
+- [ ] soorat 3D mesh rendering in viewport (RenderTarget → egui wgpu texture)
+- [ ] Entity click selection in 3D viewport (raycasting)
+- [ ] 3D gizmo rendering (translate arrows, rotate rings, scale handles)
+- [ ] Component drag-and-drop (add physics, sound, material)
+- [ ] Prefab creation from selection
+- [ ] File dialog integration for open/save
+- [ ] Keyboard shortcuts (Delete, Ctrl+Z/Y, Ctrl+S)
+- [ ] NPC personality editing panel (bhava traits/mood UI)

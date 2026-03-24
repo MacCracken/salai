@@ -436,3 +436,59 @@ fn audio_inspect_and_waveform() {
         "0:00.100"
     );
 }
+
+#[test]
+fn multi_selection_workflow() {
+    let mut app = EditorApp::new();
+    let e1 = app.spawn_entity();
+    let e2 = app.spawn_entity();
+    let e3 = app.spawn_entity();
+
+    // Single select
+    app.state.select(e1);
+    assert_eq!(app.state.selection_count(), 1);
+
+    // Add to selection
+    app.state.select_add(e2);
+    app.state.select_add(e3);
+    assert_eq!(app.state.selection_count(), 3);
+
+    // Primary is still e1
+    assert_eq!(app.state.selected(), Some(e1));
+
+    // Toggle e2 off
+    app.state.select_toggle(e2);
+    assert_eq!(app.state.selection_count(), 2);
+    assert!(!app.state.is_selected(e2));
+
+    // Despawn removes from selection
+    app.despawn_entity(e3).unwrap();
+    assert_eq!(app.state.selection_count(), 1);
+    assert_eq!(app.state.selected(), Some(e1));
+}
+
+#[test]
+fn scene_edit_with_multi_select() {
+    let mut app = EditorApp::new();
+    let mut history = History::new();
+
+    let e1 = app.spawn_entity();
+    app.world
+        .insert_component(e1, kiran::scene::Name("A".into()))
+        .unwrap();
+    let e2 = app.spawn_entity();
+    app.world
+        .insert_component(e2, kiran::scene::Name("B".into()))
+        .unwrap();
+
+    app.state.select(e1);
+    app.state.select_add(e2);
+
+    // Both selected
+    let all = app.state.selected_all();
+    assert_eq!(all.len(), 2);
+
+    // Scene extract includes both
+    let scene = salai::scene_edit::extract_scene(&app.world, app.entities(), "MultiTest");
+    assert_eq!(scene.entities.len(), 2);
+}

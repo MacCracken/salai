@@ -22,9 +22,9 @@ pub enum PlayState {
 pub struct EditorState {
     /// Current play state.
     pub play_state: PlayState,
-    /// Currently selected entity (if any). Stores the raw u64 which encodes
-    /// both index and generation — prevents stale selection after entity recycling.
-    selected_entity: Option<u64>,
+    /// Selected entities. Stores raw u64 IDs (index + generation encoded).
+    /// First entry is the primary selection.
+    selected_entities: Vec<u64>,
     /// Whether the inspector panel is open.
     pub show_inspector: bool,
     /// Whether the hierarchy panel is open.
@@ -39,7 +39,7 @@ impl Default for EditorState {
     fn default() -> Self {
         Self {
             play_state: PlayState::Editing,
-            selected_entity: None,
+            selected_entities: Vec::new(),
             show_inspector: true,
             show_hierarchy: true,
             show_viewport: true,
@@ -49,20 +49,63 @@ impl Default for EditorState {
 }
 
 impl EditorState {
-    /// Select an entity. Stores the full id (index + generation).
+    /// Select a single entity (replaces any existing selection).
     pub fn select(&mut self, entity: kiran::Entity) {
-        self.selected_entity = Some(entity.id());
+        self.selected_entities.clear();
+        self.selected_entities.push(entity.id());
+    }
+
+    /// Add an entity to the selection (shift-click).
+    pub fn select_add(&mut self, entity: kiran::Entity) {
+        let id = entity.id();
+        if !self.selected_entities.contains(&id) {
+            self.selected_entities.push(id);
+        }
+    }
+
+    /// Toggle an entity in the selection (ctrl-click).
+    pub fn select_toggle(&mut self, entity: kiran::Entity) {
+        let id = entity.id();
+        if let Some(pos) = self.selected_entities.iter().position(|&e| e == id) {
+            self.selected_entities.remove(pos);
+        } else {
+            self.selected_entities.push(id);
+        }
     }
 
     /// Clear the selection.
     pub fn deselect(&mut self) {
-        self.selected_entity = None;
+        self.selected_entities.clear();
     }
 
-    /// Get the selected entity, reconstructed with its original generation.
+    /// Get the primary selected entity (first in selection).
     #[must_use]
     pub fn selected(&self) -> Option<kiran::Entity> {
-        self.selected_entity.map(kiran::Entity::from_id)
+        self.selected_entities
+            .first()
+            .map(|&id| kiran::Entity::from_id(id))
+    }
+
+    /// Get all selected entities.
+    #[must_use]
+    pub fn selected_all(&self) -> Vec<kiran::Entity> {
+        self.selected_entities
+            .iter()
+            .map(|&id| kiran::Entity::from_id(id))
+            .collect()
+    }
+
+    /// Number of selected entities.
+    #[must_use]
+    #[inline]
+    pub fn selection_count(&self) -> usize {
+        self.selected_entities.len()
+    }
+
+    /// Check if a specific entity is selected.
+    #[must_use]
+    pub fn is_selected(&self, entity: kiran::Entity) -> bool {
+        self.selected_entities.contains(&entity.id())
     }
 
     /// Toggle play/pause.
@@ -146,13 +189,11 @@ impl EditorApp {
         self.world.entity_count()
     }
 
-    /// Despawn an entity and remove it from tracking.
+    /// Despawn an entity and remove it from tracking and selection.
     pub fn despawn_entity(&mut self, entity: kiran::Entity) -> anyhow::Result<()> {
         self.world.despawn(entity)?;
         self.tracked_entities.retain(|&e| e != entity);
-        if self.state.selected() == Some(entity) {
-            self.state.deselect();
-        }
+        self.state.selected_entities.retain(|&id| id != entity.id());
         Ok(())
     }
 
@@ -177,7 +218,7 @@ mod tests {
     fn editor_state_default() {
         let state = EditorState::default();
         assert_eq!(state.play_state, PlayState::Editing);
-        assert!(state.selected_entity.is_none());
+        assert!(state.selected_entities.is_empty());
         assert!(state.show_inspector);
         assert!(state.show_hierarchy);
     }
@@ -403,12 +444,85 @@ mod tests {
     }
 
     #[test]
-    fn select_multiple_entities_last_wins() {
+    fn select_replaces_previous() {
         let mut state = EditorState::default();
         let e1 = kiran::Entity::new(1, 0);
         let e2 = kiran::Entity::new(2, 0);
         state.select(e1);
         state.select(e2);
         assert_eq!(state.selected(), Some(e2));
+        assert_eq!(state.selection_count(), 1);
+    }
+
+    #[test]
+    fn select_add_multi() {
+        let mut state = EditorState::default();
+        let e1 = kiran::Entity::new(1, 0);
+        let e2 = kiran::Entity::new(2, 0);
+        let e3 = kiran::Entity::new(3, 0);
+        state.select(e1);
+        state.select_add(e2);
+        state.select_add(e3);
+        assert_eq!(state.selection_count(), 3);
+        assert_eq!(state.selected(), Some(e1)); // primary is first
+        assert!(state.is_selected(e2));
+        assert!(state.is_selected(e3));
+    }
+
+    #[test]
+    fn select_add_no_duplicates() {
+        let mut state = EditorState::default();
+        let e = kiran::Entity::new(1, 0);
+        state.select(e);
+        state.select_add(e);
+        assert_eq!(state.selection_count(), 1);
+    }
+
+    #[test]
+    fn select_toggle() {
+        let mut state = EditorState::default();
+        let e1 = kiran::Entity::new(1, 0);
+        let e2 = kiran::Entity::new(2, 0);
+        state.select(e1);
+        state.select_add(e2);
+        assert_eq!(state.selection_count(), 2);
+
+        // Toggle off e1
+        state.select_toggle(e1);
+        assert_eq!(state.selection_count(), 1);
+        assert!(!state.is_selected(e1));
+        assert!(state.is_selected(e2));
+
+        // Toggle e1 back on
+        state.select_toggle(e1);
+        assert_eq!(state.selection_count(), 2);
+    }
+
+    #[test]
+    fn selected_all() {
+        let mut state = EditorState::default();
+        let e1 = kiran::Entity::new(1, 0);
+        let e2 = kiran::Entity::new(2, 0);
+        state.select(e1);
+        state.select_add(e2);
+        let all = state.selected_all();
+        assert_eq!(all.len(), 2);
+        assert!(all.contains(&e1));
+        assert!(all.contains(&e2));
+    }
+
+    #[test]
+    fn despawn_removes_from_multi_selection() {
+        let mut app = EditorApp::new();
+        let e1 = app.spawn_entity();
+        let e2 = app.spawn_entity();
+        app.state.select(e1);
+        app.state.select_add(e2);
+        assert_eq!(app.state.selection_count(), 2);
+
+        app.despawn_entity(e1).unwrap();
+        assert_eq!(app.state.selection_count(), 1);
+        assert!(!app.state.is_selected(e1));
+        assert!(app.state.is_selected(e2));
     }
 }

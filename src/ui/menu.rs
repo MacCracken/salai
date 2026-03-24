@@ -3,8 +3,20 @@
 use crate::editor::EditorApp;
 use muharrir::History;
 
+/// Extra panel visibility flags not stored in EditorState.
+pub struct PanelFlags<'a> {
+    pub show_console: &'a mut bool,
+    pub show_profiler: &'a mut bool,
+    pub show_assets: &'a mut bool,
+}
+
 /// Render the menu bar.
-pub fn menu_bar(ui: &mut egui::Ui, editor: &mut EditorApp, history: &mut History) {
+pub fn menu_bar(
+    ui: &mut egui::Ui,
+    editor: &mut EditorApp,
+    history: &mut History,
+    panels: PanelFlags<'_>,
+) {
     let state = &mut editor.state;
     egui::menu::bar(ui, |ui| {
         // File menu
@@ -79,6 +91,10 @@ pub fn menu_bar(ui: &mut egui::Ui, editor: &mut EditorApp, history: &mut History
             if ui.checkbox(&mut state.show_viewport, "Viewport").changed() {
                 tracing::debug!(show = state.show_viewport, "viewport toggled");
             }
+            ui.separator();
+            ui.checkbox(panels.show_console, "Console");
+            ui.checkbox(panels.show_profiler, "Profiler");
+            ui.checkbox(panels.show_assets, "Assets");
         });
     });
 }

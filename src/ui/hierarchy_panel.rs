@@ -29,16 +29,32 @@ pub fn hierarchy_panel(
 
 /// Recursively render a hierarchy node with collapsible children.
 fn render_node(ui: &mut egui::Ui, node: &HierarchyNode, state: &mut EditorState) {
-    let selected = state.selected() == Some(node.entity);
+    let selected = state.is_selected(node.entity);
     let has_children = !node.children.is_empty();
+
+    let handle_click = |ui: &egui::Ui, state: &mut EditorState| {
+        let modifiers = ui.input(|i| i.modifiers);
+        if modifiers.shift {
+            state.select_add(node.entity);
+        } else if modifiers.ctrl || modifiers.mac_cmd {
+            state.select_toggle(node.entity);
+        } else {
+            state.select(node.entity);
+        }
+        tracing::debug!(
+            entity = %node.entity,
+            name = %node.name,
+            count = state.selection_count(),
+            "entity selected"
+        );
+    };
 
     if has_children {
         let id = ui.make_persistent_id(node.entity.id());
         egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, true)
             .show_header(ui, |ui| {
                 if ui.selectable_label(selected, &node.name).clicked() {
-                    state.select(node.entity);
-                    tracing::debug!(entity = %node.entity, name = %node.name, "entity selected");
+                    handle_click(ui, state);
                 }
             })
             .body(|ui| {
@@ -47,8 +63,7 @@ fn render_node(ui: &mut egui::Ui, node: &HierarchyNode, state: &mut EditorState)
                 }
             });
     } else if ui.selectable_label(selected, &node.name).clicked() {
-        state.select(node.entity);
-        tracing::debug!(entity = %node.entity, name = %node.name, "entity selected");
+        handle_click(ui, state);
     }
 }
 

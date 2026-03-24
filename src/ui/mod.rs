@@ -8,6 +8,7 @@ pub mod console_panel;
 mod hierarchy_panel;
 mod inspector_panel;
 mod menu;
+pub mod personality_panel;
 pub mod profiler_panel;
 mod toolbar;
 mod viewport_panel;
@@ -105,7 +106,12 @@ impl eframe::App for SalaiApp {
             egui::SidePanel::right("inspector")
                 .default_width(280.0)
                 .show(ctx, |ui| {
-                    inspector_panel::inspector_panel(ui, &self.editor.world, &self.editor.state);
+                    inspector_panel::inspector_panel(
+                        ui,
+                        &mut self.editor.world,
+                        &self.editor.state,
+                        &mut self.history,
+                    );
                 });
         }
 
@@ -149,7 +155,12 @@ impl eframe::App for SalaiApp {
         // Central viewport area
         egui::CentralPanel::default().show(ctx, |ui| {
             if self.editor.state.show_viewport {
-                viewport_panel::viewport_panel(ui, &mut self.viewport);
+                let entities = self.editor.tracked_entities.clone();
+                viewport_panel::viewport_panel_with_picking(
+                    ui,
+                    &mut self.viewport,
+                    Some((&self.editor.world, &entities, &mut self.editor.state)),
+                );
             } else {
                 ui.centered_and_justified(|ui| {
                     ui.label("Viewport hidden");
@@ -162,6 +173,9 @@ impl eframe::App for SalaiApp {
         self.profiler.record_frame(dt);
         self.console.tick();
 
+        // Keyboard shortcuts
+        handle_shortcuts(ctx, &mut self.editor, &mut self.history, &mut self.console);
+
         // Step simulation if playing
         if self.editor.state.is_playing() {
             let clock = self
@@ -171,6 +185,99 @@ impl eframe::App for SalaiApp {
                 .unwrap();
             clock.tick(1.0 / 60.0);
             ctx.request_repaint();
+        }
+    }
+}
+
+/// Handle global keyboard shortcuts.
+fn handle_shortcuts(
+    ctx: &egui::Context,
+    editor: &mut EditorApp,
+    history: &mut muharrir::History,
+    console: &mut Console,
+) {
+    ctx.input(|input| {
+        // Ctrl+Z — undo
+        if input.modifiers.ctrl && input.key_pressed(egui::Key::Z) && !input.modifiers.shift {
+            if let Some(entry) = history.undo() {
+                console.info("edit", format!("Undo: {}", entry.action()));
+            }
+        }
+
+        // Ctrl+Shift+Z or Ctrl+Y — redo
+        if (input.modifiers.ctrl && input.modifiers.shift && input.key_pressed(egui::Key::Z))
+            || (input.modifiers.ctrl && input.key_pressed(egui::Key::Y))
+        {
+            if let Some(entry) = history.redo() {
+                console.info("edit", format!("Redo: {}", entry.action()));
+            }
+        }
+
+        // Ctrl+S — save scene
+        if input.modifiers.ctrl && input.key_pressed(egui::Key::S) {
+            if let Some(path) = &editor.state.scene_path {
+                let scene =
+                    crate::scene_edit::extract_scene(&editor.world, &editor.tracked_entities, path);
+                match crate::scene_edit::save_scene(&scene, path) {
+                    Ok(()) => console.info("file", format!("Saved: {path}")),
+                    Err(e) => console.error("file", format!("Save failed: {e}")),
+                }
+            } else {
+                save_scene_as(editor, console);
+            }
+        }
+
+        // Delete — despawn selected entities
+        if input.key_pressed(egui::Key::Delete) || input.key_pressed(egui::Key::Backspace) {
+            let selected = editor.state.selected_all();
+            for entity in selected {
+                if let Err(e) = editor.despawn_entity(entity) {
+                    console.warn("edit", format!("Despawn failed: {e}"));
+                } else {
+                    console.info("edit", format!("Deleted entity {entity}"));
+                }
+            }
+        }
+
+        // Ctrl+O — open scene
+        if input.modifiers.ctrl && input.key_pressed(egui::Key::O) {
+            open_scene(editor, console);
+        }
+    });
+}
+
+/// Open a scene file via native file dialog.
+fn open_scene(editor: &mut EditorApp, console: &mut Console) {
+    let file = rfd::FileDialog::new()
+        .add_filter("Scene files", &["toml"])
+        .pick_file();
+
+    if let Some(path) = file {
+        let path_str = path.display().to_string();
+        match editor.load_scene(&path_str) {
+            Ok(()) => console.info("file", format!("Opened: {path_str}")),
+            Err(e) => console.error("file", format!("Open failed: {e}")),
+        }
+    }
+}
+
+/// Save scene to a new file via native file dialog.
+fn save_scene_as(editor: &mut EditorApp, console: &mut Console) {
+    let file = rfd::FileDialog::new()
+        .add_filter("Scene files", &["toml"])
+        .set_file_name("scene.toml")
+        .save_file();
+
+    if let Some(path) = file {
+        let path_str = path.display().to_string();
+        let scene =
+            crate::scene_edit::extract_scene(&editor.world, &editor.tracked_entities, &path_str);
+        match crate::scene_edit::save_scene(&scene, &path_str) {
+            Ok(()) => {
+                editor.state.scene_path = Some(path_str.clone());
+                console.info("file", format!("Saved as: {path_str}"));
+            }
+            Err(e) => console.error("file", format!("Save failed: {e}")),
         }
     }
 }

@@ -4,15 +4,58 @@
 //! then displays it in an egui panel. Handles mouse interaction for camera
 //! orbit, zoom, and entity selection.
 
+use crate::editor::EditorState;
 use crate::viewport::{GizmoMode, ViewportState};
 
-/// Render the viewport panel with camera controls and scene display.
-pub fn viewport_panel(ui: &mut egui::Ui, viewport: &mut ViewportState) {
+/// Render viewport with camera controls, scene display, and entity picking.
+pub fn viewport_panel_with_picking(
+    ui: &mut egui::Ui,
+    viewport: &mut ViewportState,
+    picking: Option<(&kiran::World, &[kiran::Entity], &mut EditorState)>,
+) {
     let available = ui.available_size();
     let (rect, response) = ui.allocate_exact_size(available, egui::Sense::click_and_drag());
 
     // Handle mouse interaction
     handle_mouse_input(ui, &response, viewport);
+
+    // Handle entity picking on click
+    if response.clicked() {
+        if let Some((world, entities, state)) = picking {
+            if let Some(pointer_pos) = response.interact_pointer_pos() {
+                let (ndc_x, ndc_y) = crate::picking::pixel_to_ndc(
+                    pointer_pos.x - rect.left(),
+                    pointer_pos.y - rect.top(),
+                    rect.width(),
+                    rect.height(),
+                );
+                let view_proj = viewport.camera.view_projection();
+                if let Some(hit) = crate::picking::pick_entity(
+                    world,
+                    entities,
+                    viewport.camera.position,
+                    view_proj,
+                    ndc_x,
+                    ndc_y,
+                    0.5,
+                ) {
+                    let modifiers = ui.input(|i| i.modifiers);
+                    if modifiers.shift {
+                        state.select_add(hit.entity);
+                    } else if modifiers.ctrl || modifiers.mac_cmd {
+                        state.select_toggle(hit.entity);
+                    } else {
+                        state.select(hit.entity);
+                    }
+                    tracing::info!(
+                        entity = %hit.entity,
+                        distance = hit.distance,
+                        "entity picked in viewport"
+                    );
+                }
+            }
+        }
+    }
 
     // Draw viewport background
     let painter = ui.painter_at(rect);

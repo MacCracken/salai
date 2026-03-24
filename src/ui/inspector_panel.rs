@@ -4,7 +4,12 @@ use crate::editor::EditorState;
 use crate::inspector::inspect_entity;
 
 /// Render the inspector panel for the currently selected entity.
-pub fn inspector_panel(ui: &mut egui::Ui, world: &kiran::World, state: &EditorState) {
+pub fn inspector_panel(
+    ui: &mut egui::Ui,
+    world: &mut kiran::World,
+    state: &EditorState,
+    history: &mut muharrir::History,
+) {
     ui.heading("Inspector");
     ui.separator();
 
@@ -19,6 +24,22 @@ pub fn inspector_panel(ui: &mut egui::Ui, world: &kiran::World, state: &EditorSt
     }
 
     ui.label(format!("Entity: {entity}"));
+
+    // Add component dropdown
+    ui.horizontal(|ui| {
+        ui.menu_button("+ Component", |ui| {
+            for &comp_type in crate::scene_edit::COMPONENT_TYPES {
+                if ui.button(comp_type).clicked() {
+                    crate::scene_edit::add_component(world, entity, comp_type, history);
+                    ui.close_menu();
+                }
+            }
+        });
+
+        if state.selection_count() > 1 {
+            ui.label(format!("({} selected)", state.selection_count()));
+        }
+    });
     ui.separator();
 
     let components = inspect_entity(world, entity);
@@ -30,13 +51,13 @@ pub fn inspector_panel(ui: &mut egui::Ui, world: &kiran::World, state: &EditorSt
 
     egui::ScrollArea::vertical().show(ui, |ui| {
         for comp in &components {
-            egui::CollapsingHeader::new(comp.name)
-                .default_open(true)
-                .show(ui, |ui| {
-                    // For now, display as read-only text
-                    // V0.4 will add editable fields with expr evaluation
-                    ui.label(&comp.details);
-                });
+            ui.horizontal(|ui| {
+                egui::CollapsingHeader::new(comp.name)
+                    .default_open(true)
+                    .show(ui, |ui| {
+                        ui.label(&comp.details);
+                    });
+            });
         }
     });
 }

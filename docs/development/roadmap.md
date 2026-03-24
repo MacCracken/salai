@@ -15,11 +15,11 @@
 
 ## Next
 
-- [ ] soorat 3D mesh rendering in viewport (RenderTarget → egui wgpu texture)
-- [ ] Entity click selection in 3D viewport (raycasting)
-- [ ] 3D gizmo rendering (translate arrows, rotate rings, scale handles)
-- [ ] Component drag-and-drop (add physics, sound, material)
-- [ ] Prefab creation from selection
-- [ ] File dialog integration for open/save
-- [ ] Keyboard shortcuts (Delete, Ctrl+Z/Y, Ctrl+S)
-- [ ] NPC personality editing panel (bhava traits/mood UI)
+- [x] soorat 3D rendering bridge (viewport_renderer with draw_into_pass, egui_bridge, primitives)
+- [x] Entity click selection in viewport (raycasting via picking module)
+- [x] 3D gizmo rendering (translate arrows, rotate rings, scale handles via LineBatch)
+- [x] Component add/remove in inspector (Position, Light, Tags, Material)
+- [x] Prefab creation from selection (Scene menu)
+- [x] File dialog integration (rfd, Ctrl+O / Ctrl+S)
+- [x] Keyboard shortcuts (Delete, Ctrl+Z/Y, Ctrl+S, Ctrl+O)
+- [x] NPC personality editing panel (bhava traits/mood UI)

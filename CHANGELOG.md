@@ -53,6 +53,29 @@
 - **console_panel** — ring-buffer log viewer with severity filtering (DBG/INF/WRN/ERR), auto-scroll, clear.
 - **profiler_panel** — FPS counter, frame time graph with 60fps target line, entity/history stats.
 - **Multi-selection** — `select_add()` (shift-click), `select_toggle()` (ctrl-click), `selected_all()`, `is_selected()`, `selection_count()`. Hierarchy panel wired for shift/ctrl multi-select.
+- **personality_panel** — NPC personality editing UI with bhava integration.
+  - 15 trait sliders grouped by Social/Cognitive/Behavioral/Professional.
+  - Mood vector display with 6 emotion bars (joy, arousal, dominance, trust, interest, frustration).
+  - Summary bar showing active trait count and mood label.
+  - Color-coded trait levels (Lowest→Highest).
+- **picking** module — entity selection via raycasting in the viewport.
+  - `pick_entity()` casts ray through click point, tests sphere intersection against entity positions.
+  - `pixel_to_ndc()` coordinate conversion, `PickResult` with entity/distance/position.
+  - Viewport click wired to picking with shift/ctrl multi-select support.
+- **Component add/remove** in inspector — "+ Component" dropdown for Position, Light, Tags, Material with undo/redo.
+  - `add_component()`, `remove_component()` in scene_edit, `COMPONENT_TYPES` constant.
+- **Prefab creation** — Scene > Create Prefab from Selection menu extracts entity to `PrefabDef`.
+  - `extract_prefab()` in scene_edit.
+- **File dialogs** — Ctrl+O opens native file dialog for `.toml` scenes, Ctrl+S saves (with Save As dialog if no path).
+  - Uses `rfd` crate for cross-platform native dialogs.
+- **Keyboard shortcuts** — Delete (despawn selected), Ctrl+Z (undo), Ctrl+Y/Ctrl+Shift+Z (redo), Ctrl+S (save), Ctrl+O (open).
+  - All actions logged to console panel.
+- **viewport_renderer** module — soorat 3D rendering bridge for egui viewport.
+  - `build_grid_lines()` — ground-plane grid with color-coded X/Z axes.
+  - `build_gizmo_lines()` — translate arrows, rotate rings, scale handles (all three modes).
+  - `camera_view_proj()` — compute view-projection matrix from kiran Camera.
+  - `collect_entity_visuals()` — gather entity positions with selection highlighting.
+  - Uses soorat's `draw_into_pass()`, `egui_bridge`, and `primitives` APIs.
 - 36 criterion benchmarks covering all modules (including scene_edit).
 
 ### Changed

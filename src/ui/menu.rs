@@ -21,9 +21,8 @@ pub fn menu_bar(
     egui::menu::bar(ui, |ui| {
         // File menu
         ui.menu_button("File", |ui| {
-            if ui.button("Open Scene...").clicked() {
-                // TODO: file dialog integration
-                tracing::info!("open scene requested");
+            if ui.button("Open Scene...  Ctrl+O").clicked() {
+                tracing::info!("open scene — use Ctrl+O");
                 ui.close_menu();
             }
             if ui.button("Save Scene").clicked() {
@@ -42,12 +41,38 @@ pub fn menu_bar(
                 ui.close_menu();
             }
             if ui.button("Save Scene As...").clicked() {
-                tracing::info!("save scene as requested");
+                // Handled by Ctrl+S shortcut when no path set; TODO: wire console
+                tracing::info!("save scene as — use Ctrl+S");
                 ui.close_menu();
             }
             ui.separator();
             if ui.button("Quit").clicked() {
                 tracing::info!("quit requested");
+                ui.close_menu();
+            }
+        });
+
+        // Scene menu
+        ui.menu_button("Scene", |ui| {
+            let has_selection = state.selected().is_some();
+            if ui
+                .add_enabled(
+                    has_selection,
+                    egui::Button::new("Create Prefab from Selection"),
+                )
+                .clicked()
+            {
+                if let Some(entity) = state.selected() {
+                    let name = editor
+                        .world
+                        .get_component::<kiran::scene::Name>(entity)
+                        .map(|n| n.0.clone())
+                        .unwrap_or_else(|| format!("Prefab_{}", entity.index()));
+                    let prefab = crate::scene_edit::extract_prefab(&editor.world, entity, &name);
+                    if let Ok(toml_str) = toml::to_string_pretty(&prefab) {
+                        tracing::info!(name = %name, "prefab created:\n{}", toml_str);
+                    }
+                }
                 ui.close_menu();
             }
         });

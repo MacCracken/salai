@@ -110,6 +110,122 @@ pub fn set_light_intensity(
     );
 }
 
+/// Add a component to an entity by type name. Records in history.
+pub fn add_component(
+    world: &mut World,
+    entity: kiran::Entity,
+    component_type: &str,
+    history: &mut History,
+) {
+    match component_type {
+        "Position" => {
+            world
+                .insert_component(entity, Position(hisab::Vec3::ZERO))
+                .unwrap();
+        }
+        "Light" => {
+            world
+                .insert_component(entity, LightComponent { intensity: 1.0 })
+                .unwrap();
+        }
+        "Tags" => {
+            world.insert_component(entity, Tags(Vec::new())).unwrap();
+        }
+        "Material" => {
+            world
+                .insert_component(
+                    entity,
+                    Material {
+                        color: [1.0, 1.0, 1.0, 1.0],
+                        texture: None,
+                    },
+                )
+                .unwrap();
+        }
+        _ => {
+            tracing::warn!(component_type, "unknown component type");
+            return;
+        }
+    }
+
+    history.record(
+        "inspector",
+        Action::new(
+            "add_component",
+            serde_json::json!({
+                "entity": entity.id(),
+                "component": component_type
+            }),
+        ),
+    );
+    tracing::info!(entity = %entity, component_type, "component added");
+}
+
+/// Remove a component from an entity by type name. Records in history.
+pub fn remove_component(
+    world: &mut World,
+    entity: kiran::Entity,
+    component_type: &str,
+    history: &mut History,
+) {
+    let removed = match component_type {
+        "Position" => world.remove_component::<Position>(entity).is_some(),
+        "Light" => world.remove_component::<LightComponent>(entity).is_some(),
+        "Tags" => world.remove_component::<Tags>(entity).is_some(),
+        "Material" => world.remove_component::<Material>(entity).is_some(),
+        _ => {
+            tracing::warn!(component_type, "unknown component type");
+            return;
+        }
+    };
+
+    if removed {
+        history.record(
+            "inspector",
+            Action::new(
+                "remove_component",
+                serde_json::json!({
+                    "entity": entity.id(),
+                    "component": component_type
+                }),
+            ),
+        );
+        tracing::info!(entity = %entity, component_type, "component removed");
+    }
+}
+
+/// Available component types for the "Add Component" dropdown.
+pub const COMPONENT_TYPES: &[&str] = &["Position", "Light", "Tags", "Material"];
+
+/// Extract a prefab definition from an entity.
+#[must_use]
+pub fn extract_prefab(
+    world: &World,
+    entity: kiran::Entity,
+    prefab_name: &str,
+) -> kiran::scene::PrefabDef {
+    let position = world
+        .get_component::<Position>(entity)
+        .map(|p| [p.0.x, p.0.y, p.0.z])
+        .unwrap_or([0.0, 0.0, 0.0]);
+    let light_intensity = world
+        .get_component::<LightComponent>(entity)
+        .map(|l| l.intensity);
+    let tags = world
+        .get_component::<Tags>(entity)
+        .map(|t| t.0.clone())
+        .unwrap_or_default();
+    let material = world.get_component::<Material>(entity).cloned();
+
+    kiran::scene::PrefabDef {
+        name: prefab_name.to_string(),
+        position,
+        light_intensity,
+        tags,
+        material,
+    }
+}
+
 /// Extract the current scene state from the world into a serializable SceneDefinition.
 #[must_use]
 pub fn extract_scene(
@@ -357,5 +473,89 @@ mod tests {
         history.redo();
         history.redo();
         assert!(!history.can_redo());
+    }
+
+    #[test]
+    fn add_component_position() {
+        let mut world = World::new();
+        let mut history = History::new();
+        let e = world.spawn();
+
+        add_component(&mut world, e, "Position", &mut history);
+        assert!(world.get_component::<Position>(e).is_some());
+        assert_eq!(history.len(), 1);
+    }
+
+    #[test]
+    fn add_component_all_types() {
+        let mut world = World::new();
+        let mut history = History::new();
+        let e = world.spawn();
+
+        for &comp_type in COMPONENT_TYPES {
+            add_component(&mut world, e, comp_type, &mut history);
+        }
+        assert_eq!(history.len(), 4);
+        assert!(world.get_component::<Position>(e).is_some());
+        assert!(world.get_component::<LightComponent>(e).is_some());
+        assert!(world.get_component::<Tags>(e).is_some());
+        assert!(world.get_component::<Material>(e).is_some());
+    }
+
+    #[test]
+    fn remove_component_position() {
+        let mut world = World::new();
+        let mut history = History::new();
+        let e = world.spawn();
+        world
+            .insert_component(e, Position(hisab::Vec3::ZERO))
+            .unwrap();
+
+        remove_component(&mut world, e, "Position", &mut history);
+        assert!(world.get_component::<Position>(e).is_none());
+        assert_eq!(history.len(), 1);
+    }
+
+    #[test]
+    fn remove_component_not_present() {
+        let mut world = World::new();
+        let mut history = History::new();
+        let e = world.spawn();
+
+        remove_component(&mut world, e, "Light", &mut history);
+        assert_eq!(history.len(), 0); // no action recorded
+    }
+
+    #[test]
+    fn add_component_unknown_type() {
+        let mut world = World::new();
+        let mut history = History::new();
+        let e = world.spawn();
+
+        add_component(&mut world, e, "FakeComponent", &mut history);
+        assert_eq!(history.len(), 0); // not recorded
+    }
+
+    #[test]
+    fn extract_prefab_basic() {
+        let mut world = World::new();
+        let e = world.spawn();
+        world.insert_component(e, Name("Hero".into())).unwrap();
+        world
+            .insert_component(e, Position(hisab::Vec3::new(1.0, 2.0, 3.0)))
+            .unwrap();
+        world
+            .insert_component(e, Tags(vec!["player".into()]))
+            .unwrap();
+
+        let prefab = extract_prefab(&world, e, "HeroPrefab");
+        assert_eq!(prefab.name, "HeroPrefab");
+        assert_eq!(prefab.position, [1.0, 2.0, 3.0]);
+        assert_eq!(prefab.tags, vec!["player"]);
+    }
+
+    #[test]
+    fn component_types_list() {
+        assert_eq!(COMPONENT_TYPES.len(), 4);
     }
 }

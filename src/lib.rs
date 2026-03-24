@@ -12,10 +12,12 @@ pub mod editor;
 pub mod hierarchy;
 pub mod inspector;
 pub mod personality;
+pub mod picking;
 pub mod scene_edit;
 pub mod texture;
 pub mod ui;
 pub mod viewport;
+pub mod viewport_renderer;
 
 // Re-export muharrir primitives used by salai consumers
 pub use muharrir::expr::{self, ExprError, eval_f64, eval_or, eval_or_parse};

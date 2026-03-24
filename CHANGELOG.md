@@ -18,7 +18,23 @@
   - `NpcPersonality` wraps 15-dimension trait profile + mood vector.
   - `inspector_summary()` for panel display, `compatibility()`, `blend()` for NPC authoring.
   - `ALL_TRAITS`, `ALL_LEVELS` constants for building editor UI.
-- 28 criterion benchmarks covering all modules.
+- **texture** module — image processing utilities via `ranga`.
+  - `generate_thumbnail()` with aspect-preserving resize.
+  - `inspect_texture()`, `average_color()`, `luminance_histogram()`, `color_to_hex()`.
+- **audio** module — audio asset preview via `dhvani`.
+  - `inspect_audio()` / `inspect_audio_with_loudness()` for metadata extraction.
+  - `waveform()` for visualization data, `format_duration()`, `amplitude_to_db_str()`.
+  - `buffer_from_samples()`, `normalize()` for playback preparation.
+- **ui** module — egui/eframe editor interface.
+  - `SalaiApp` eframe wrapper with full panel layout.
+  - Menu bar (File open/save, Edit undo/redo, View panel toggles).
+  - Toolbar (play/pause/step, gizmo mode selector, entity count status).
+  - Hierarchy panel with collapsible entity tree and click-to-select.
+  - Inspector panel showing selected entity components.
+  - Central viewport placeholder (3D rendering in V0.3).
+  - `expr_field()` widget for expression-evaluable numeric inputs.
+- `EditorApp::spawn_entity()` and `entities()` for tracked entity management.
+- 33 criterion benchmarks covering all modules.
 
 ### Changed
 - **Migrated to muharrir** — `expr`, `hw`, `history` modules now re-exported from `muharrir` shared editor library instead of local copies. Removes direct deps on abaco, ai-hwaccel, libro.

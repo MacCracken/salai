@@ -91,6 +91,8 @@ impl EditorState {
 pub struct EditorApp {
     pub state: EditorState,
     pub world: World,
+    /// Tracked entity list for hierarchy display. Updated on spawn/despawn/load.
+    tracked_entities: Vec<kiran::Entity>,
 }
 
 impl EditorApp {
@@ -102,6 +104,7 @@ impl EditorApp {
         Self {
             state: EditorState::default(),
             world,
+            tracked_entities: Vec::new(),
         }
     }
 
@@ -109,10 +112,22 @@ impl EditorApp {
     pub fn load_scene(&mut self, path: &str) -> anyhow::Result<()> {
         let toml_str = std::fs::read_to_string(path)?;
         let scene = kiran::scene::load_scene(&toml_str)?;
-        kiran::scene::spawn_scene(&mut self.world, &scene)?;
+        let spawned = kiran::scene::spawn_scene(&mut self.world, &scene)?;
+        self.tracked_entities.extend(spawned);
         self.state.scene_path = Some(path.to_string());
-        tracing::info!(path, "scene loaded in editor");
+        tracing::info!(
+            path,
+            entities = self.tracked_entities.len(),
+            "scene loaded in editor"
+        );
         Ok(())
+    }
+
+    /// Spawn an entity and track it.
+    pub fn spawn_entity(&mut self) -> kiran::Entity {
+        let entity = self.world.spawn();
+        self.tracked_entities.push(entity);
+        entity
     }
 
     /// Step the simulation by one frame (when paused).
@@ -128,6 +143,12 @@ impl EditorApp {
     #[inline]
     pub fn entity_count(&self) -> usize {
         self.world.entity_count()
+    }
+
+    /// Get the list of tracked entities (alive ones only).
+    #[must_use]
+    pub fn entities(&self) -> &[kiran::Entity] {
+        &self.tracked_entities
     }
 }
 

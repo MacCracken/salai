@@ -1,8 +1,8 @@
 //! Salai — game editor binary.
 
-use salai::EditorApp;
+use salai::SalaiApp;
 
-fn main() {
+fn main() -> eframe::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -10,20 +10,20 @@ fn main() {
         )
         .init();
 
-    let mut app = EditorApp::new();
+    let scene_path = std::env::args().nth(1);
+    let app = SalaiApp::new(scene_path.as_deref());
 
-    // Load scene from CLI args if provided
-    if let Some(path) = std::env::args().nth(1)
-        && let Err(e) = app.load_scene(&path)
-    {
-        tracing::error!(path, error = %e, "failed to load scene");
-    }
+    tracing::info!(
+        entities = app.editor.entity_count(),
+        "salai editor starting"
+    );
 
-    tracing::info!(entities = app.entity_count(), "salai editor started");
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_title("Salai — Game Editor")
+            .with_inner_size([1280.0, 720.0]),
+        ..Default::default()
+    };
 
-    // TODO: Wire into eframe event loop when UI is implemented
-    // For now, just print state
-    println!("Salai — game editor for Kiran");
-    println!("  Entities: {}", app.entity_count());
-    println!("  State: {:?}", app.state.play_state);
+    eframe::run_native("Salai", options, Box::new(|_cc| Ok(Box::new(app))))
 }

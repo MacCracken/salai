@@ -452,6 +452,73 @@ criterion_group!(
     bench_npc_blend,
 );
 
+// ---------------------------------------------------------------------------
+// Texture benchmarks
+// ---------------------------------------------------------------------------
+
+fn bench_average_color(c: &mut Criterion) {
+    let data = vec![128u8; 256 * 256 * 4];
+    c.bench_function("texture_average_color_256x256", |b| {
+        b.iter(|| black_box(salai::texture::average_color(&data, 256, 256)));
+    });
+}
+
+fn bench_thumbnail_256(c: &mut Criterion) {
+    let data = vec![128u8; 512 * 512 * 4];
+    c.bench_function("texture_thumbnail_512_to_128", |b| {
+        b.iter(|| {
+            black_box(salai::texture::generate_thumbnail(
+                data.clone(),
+                512,
+                512,
+                128,
+            ))
+        });
+    });
+}
+
+fn bench_inspect_texture(c: &mut Criterion) {
+    let data = vec![100u8; 64 * 64 * 4];
+    c.bench_function("texture_inspect_64x64", |b| {
+        b.iter(|| black_box(salai::texture::inspect_texture(&data, 64, 64)));
+    });
+}
+
+criterion_group!(
+    texture_benches,
+    bench_average_color,
+    bench_thumbnail_256,
+    bench_inspect_texture
+);
+
+// ---------------------------------------------------------------------------
+// Audio benchmarks
+// ---------------------------------------------------------------------------
+
+fn bench_inspect_audio(c: &mut Criterion) {
+    let samples: Vec<f32> = (0..44100)
+        .map(|i| (2.0 * std::f32::consts::PI * 440.0 * i as f32 / 44100.0).sin())
+        .collect();
+    let buf = dhvani::AudioBuffer::from_interleaved(samples, 1, 44100).unwrap();
+
+    c.bench_function("audio_inspect_1sec", |b| {
+        b.iter(|| black_box(salai::audio::inspect_audio(&buf)));
+    });
+}
+
+fn bench_audio_waveform(c: &mut Criterion) {
+    let samples: Vec<f32> = (0..44100)
+        .map(|i| (2.0 * std::f32::consts::PI * 440.0 * i as f32 / 44100.0).sin())
+        .collect();
+    let buf = dhvani::AudioBuffer::from_interleaved(samples, 1, 44100).unwrap();
+
+    c.bench_function("audio_waveform_1sec_100pps", |b| {
+        b.iter(|| black_box(salai::audio::waveform(&buf, 100)));
+    });
+}
+
+criterion_group!(audio_benches, bench_inspect_audio, bench_audio_waveform);
+
 criterion_main!(
     editor_benches,
     inspector_benches,
@@ -461,4 +528,6 @@ criterion_main!(
     hw_benches,
     history_benches,
     personality_benches,
+    texture_benches,
+    audio_benches,
 );

@@ -394,3 +394,45 @@ fn personality_with_mood() {
     let summary = npc.inspector_summary();
     assert_eq!(summary.mood_label, "Frustrated");
 }
+
+#[test]
+fn texture_inspect_and_thumbnail() {
+    // Create a 4x4 red texture
+    let mut data = Vec::with_capacity(4 * 4 * 4);
+    for _ in 0..16 {
+        data.extend_from_slice(&[255, 0, 0, 255]);
+    }
+
+    let info = salai::texture::inspect_texture(&data, 4, 4);
+    assert_eq!(info.width, 4);
+    assert_eq!(info.height, 4);
+    assert_eq!(info.average_color, [255, 0, 0, 255]);
+
+    // Hex display
+    let hex = salai::texture::color_to_hex(info.average_color);
+    assert_eq!(hex, "#FF0000FF");
+}
+
+#[test]
+fn audio_inspect_and_waveform() {
+    // Create a 0.1 second sine wave
+    let samples: Vec<f32> = (0..4410)
+        .map(|i| (2.0 * std::f32::consts::PI * 440.0 * i as f32 / 44100.0).sin())
+        .collect();
+    let buf = salai::audio::buffer_from_samples(samples, 1, 44100).unwrap();
+
+    let info = salai::audio::inspect_audio(&buf);
+    assert!((info.duration_secs - 0.1).abs() < 0.01);
+    assert_eq!(info.channels, 1);
+    assert!(info.peak > 0.9);
+
+    // Waveform
+    let wf = salai::audio::waveform(&buf, 100);
+    assert!(!wf.channels.is_empty());
+
+    // Duration formatting
+    assert_eq!(
+        salai::audio::format_duration(info.duration_secs),
+        "0:00.100"
+    );
+}

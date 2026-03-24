@@ -14,21 +14,22 @@
 
 > Wire in AGNOS crates that reduce future workload across the roadmap.
 
-- [ ] **ranga** — image processing pipeline for texture/asset previews and viewport overlays
-- [ ] **dhvani** — audio engine hookup for play-mode sound and audio asset preview
+- [x] **ranga** — image processing pipeline for texture/asset previews and viewport overlays
+- [x] **dhvani** — audio engine hookup for play-mode sound and audio asset preview
 - [x] **abaco** — expression evaluator in inspector property fields (e.g. `2*pi`, unit math)
 - [x] **ai-hwaccel** — detect GPU capabilities, auto-configure viewport quality/feature set
 - [x] **libro** — audit-chain backend for undo/redo history (feeds into V0.4)
 - [x] **bhava** — emotion/personality editing panel for NPC/character authoring
 
-## V0.2 — egui Integration
+## V0.2 — egui Integration (done, 2026-03-23)
 
-- [ ] eframe event loop wiring
-- [ ] Inspector panel with egui widgets (editable fields)
-  - [ ] abaco-powered expression input for numeric properties
-- [ ] Hierarchy panel with collapsible tree
-- [ ] Toolbar (play/pause/step, gizmo mode selector)
-- [ ] Menu bar (file open/save, view toggles)
+- eframe event loop with SalaiApp wrapper
+- Inspector panel with component display (editable fields in V0.4)
+  - expr_field widget ready for numeric expression input
+- Hierarchy panel with collapsible entity tree and click-to-select
+- Toolbar (play/pause/step, gizmo mode selector, entity count status)
+- Menu bar (File open/save, Edit undo/redo, View panel toggles)
+- EditorApp entity tracking (spawn_entity, entities)
 
 ## V0.3 — Viewport
 

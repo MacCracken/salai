@@ -3,8 +3,10 @@
 use salai::editor::{EditorApp, EditorState, PlayState};
 use salai::expr::{eval_f64, eval_or, eval_or_parse};
 use salai::hierarchy::{build_hierarchy, flatten_hierarchy};
+use salai::history::{Action, History};
 use salai::hw::{HardwareProfile, QualityTier};
 use salai::inspector::inspect_entity;
+use salai::personality::NpcPersonality;
 use salai::viewport::{GizmoMode, ViewportState};
 
 #[test]
@@ -297,4 +299,110 @@ fn hw_memory_display() {
 
     profile.gpu_memory_bytes = 4 * 1024 * 1024 * 1024;
     assert_eq!(profile.gpu_memory_display(), "4.0 GiB");
+}
+
+#[test]
+fn history_editor_workflow() {
+    // Simulate a real editing session with undo/redo
+    let mut app = EditorApp::new();
+    let mut history = History::new();
+
+    // Spawn an entity and record the action
+    let e = app.world.spawn();
+    app.world
+        .insert_component(e, kiran::scene::Name("Player".into()))
+        .unwrap();
+    history.record(
+        "editor",
+        Action::new("spawn_entity", serde_json::json!({"entity_id": e.id()})),
+    );
+
+    // Set position and record
+    app.world
+        .insert_component(e, kiran::scene::Position(hisab::Vec3::new(1.0, 2.0, 3.0)))
+        .unwrap();
+    history.record(
+        "inspector",
+        Action::new(
+            "set_position",
+            serde_json::json!({
+                "entity": e.id(),
+                "before": [0, 0, 0],
+                "after": [1, 2, 3]
+            }),
+        ),
+    );
+
+    assert_eq!(history.len(), 2);
+    assert!(history.verify());
+
+    // Undo the position change
+    let entry = history.undo().unwrap();
+    assert_eq!(entry.action(), "set_position");
+
+    // Undo the spawn
+    let entry = history.undo().unwrap();
+    assert_eq!(entry.action(), "spawn_entity");
+
+    // Redo both
+    history.redo();
+    history.redo();
+    assert_eq!(history.cursor(), 2);
+    assert!(!history.can_redo());
+}
+
+#[test]
+fn history_integrity_after_many_actions() {
+    let mut history = History::new();
+    for i in 0..50 {
+        history.record(
+            "test",
+            Action::new(&format!("action_{i}"), serde_json::json!({"step": i})),
+        );
+    }
+    assert_eq!(history.len(), 50);
+    assert!(history.verify());
+}
+
+#[test]
+fn personality_editing_workflow() {
+    use bhava::traits::{TraitGroup, TraitKind, TraitLevel};
+
+    // Create NPC personalities for a game scene
+    let mut guard = NpcPersonality::new("Guard");
+    guard.set_trait(TraitKind::Confidence, TraitLevel::High);
+    guard.set_trait(TraitKind::Warmth, TraitLevel::Low);
+    guard.set_trait(TraitKind::Precision, TraitLevel::High);
+
+    let mut merchant = NpcPersonality::new("Merchant");
+    merchant.set_trait(TraitKind::Humor, TraitLevel::High);
+    merchant.set_trait(TraitKind::Warmth, TraitLevel::Highest);
+    merchant.set_group(TraitGroup::Social, TraitLevel::High);
+
+    // Check inspector summaries
+    let guard_summary = guard.inspector_summary();
+    assert_eq!(guard_summary.name, "Guard");
+    assert_eq!(guard_summary.trait_count, 3);
+
+    let merchant_summary = merchant.inspector_summary();
+    assert_eq!(merchant_summary.name, "Merchant");
+
+    // Compatibility check
+    let compat = guard.compatibility(&merchant);
+    assert!(compat >= 0.0 && compat <= 1.0);
+
+    // Blend for offspring/hybrid NPC
+    let hybrid = guard.blend(&merchant, 0.5);
+    let hybrid_summary = hybrid.inspector_summary();
+    assert!(!hybrid_summary.name.is_empty());
+}
+
+#[test]
+fn personality_with_mood() {
+    let mut npc = NpcPersonality::new("Angry Villager");
+    npc.mood.frustration = 0.9;
+    npc.mood.joy = -0.5;
+
+    let summary = npc.inspector_summary();
+    assert_eq!(summary.mood_label, "Frustrated");
 }

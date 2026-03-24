@@ -18,8 +18,8 @@
 - [ ] **dhvani** — audio engine hookup for play-mode sound and audio asset preview
 - [x] **abaco** — expression evaluator in inspector property fields (e.g. `2*pi`, unit math)
 - [x] **ai-hwaccel** — detect GPU capabilities, auto-configure viewport quality/feature set
-- [ ] **libro** — audit-chain backend for undo/redo history (feeds into V0.4)
-- [ ] **bhava** — emotion/personality editing panel for NPC/character authoring
+- [x] **libro** — audit-chain backend for undo/redo history (feeds into V0.4)
+- [x] **bhava** — emotion/personality editing panel for NPC/character authoring
 
 ## V0.2 — egui Integration
 

@@ -3,8 +3,10 @@ use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use salai::editor::{EditorApp, EditorState, PlayState};
 use salai::expr::{eval_f64, eval_or, eval_or_parse};
 use salai::hierarchy::{build_hierarchy, flatten_hierarchy};
+use salai::history::{Action, History};
 use salai::hw::HardwareProfile;
 use salai::inspector::inspect_entity;
+use salai::personality::NpcPersonality;
 use salai::viewport::ViewportState;
 
 // ---------------------------------------------------------------------------
@@ -288,13 +290,6 @@ fn bench_hw_detect(c: &mut Criterion) {
     });
 }
 
-fn bench_hw_from_registry(c: &mut Criterion) {
-    let registry = ai_hwaccel::AcceleratorRegistry::detect();
-    c.bench_function("hw_from_registry", |b| {
-        b.iter(|| black_box(HardwareProfile::from_registry(&registry)));
-    });
-}
-
 // ---------------------------------------------------------------------------
 // Groups
 // ---------------------------------------------------------------------------
@@ -339,7 +334,123 @@ criterion_group!(
     bench_eval_or_parse_number,
 );
 
-criterion_group!(hw_benches, bench_hw_detect, bench_hw_from_registry,);
+criterion_group!(hw_benches, bench_hw_detect,);
+
+// ---------------------------------------------------------------------------
+// History benchmarks
+// ---------------------------------------------------------------------------
+
+fn bench_history_record(c: &mut Criterion) {
+    c.bench_function("history_record", |b| {
+        let mut h = History::new();
+        let details = serde_json::json!({"entity": 1, "field": "position", "before": [0,0,0], "after": [1,2,3]});
+        b.iter(|| {
+            h.record("bench", Action::new("set_position", details.clone()));
+            black_box(&h);
+        });
+    });
+}
+
+fn bench_history_undo_redo(c: &mut Criterion) {
+    let mut h = History::new();
+    for i in 0..100 {
+        h.record("bench", Action::new("action", serde_json::json!({"i": i})));
+    }
+
+    c.bench_function("history_undo_redo_cycle", |b| {
+        b.iter(|| {
+            h.undo();
+            h.redo();
+            black_box(&h);
+        });
+    });
+}
+
+fn bench_history_verify_100(c: &mut Criterion) {
+    let mut h = History::new();
+    for i in 0..100 {
+        h.record("bench", Action::new("action", serde_json::json!({"i": i})));
+    }
+
+    c.bench_function("history_verify_100_entries", |b| {
+        b.iter(|| black_box(h.verify()));
+    });
+}
+
+criterion_group!(
+    history_benches,
+    bench_history_record,
+    bench_history_undo_redo,
+    bench_history_verify_100,
+);
+
+// ---------------------------------------------------------------------------
+// Personality benchmarks
+// ---------------------------------------------------------------------------
+
+fn bench_npc_personality_new(c: &mut Criterion) {
+    c.bench_function("npc_personality_new", |b| {
+        b.iter(|| black_box(NpcPersonality::new("Guard")));
+    });
+}
+
+fn bench_npc_personality_inspector_summary(c: &mut Criterion) {
+    let mut npc = NpcPersonality::new("Boss");
+    npc.set_trait(
+        bhava::traits::TraitKind::Confidence,
+        bhava::traits::TraitLevel::Highest,
+    );
+    npc.set_trait(
+        bhava::traits::TraitKind::Warmth,
+        bhava::traits::TraitLevel::Low,
+    );
+
+    c.bench_function("npc_inspector_summary", |b| {
+        b.iter(|| black_box(npc.inspector_summary()));
+    });
+}
+
+fn bench_npc_compatibility(c: &mut Criterion) {
+    let mut a = NpcPersonality::new("A");
+    let mut b = NpcPersonality::new("B");
+    a.set_trait(
+        bhava::traits::TraitKind::Humor,
+        bhava::traits::TraitLevel::Highest,
+    );
+    b.set_trait(
+        bhava::traits::TraitKind::Humor,
+        bhava::traits::TraitLevel::Lowest,
+    );
+
+    c.bench_function("npc_compatibility", |b_iter| {
+        b_iter.iter(|| black_box(a.compatibility(&b)));
+    });
+}
+
+fn bench_npc_blend(c: &mut Criterion) {
+    let mut a = NpcPersonality::new("A");
+    let mut b = NpcPersonality::new("B");
+    a.set_trait(
+        bhava::traits::TraitKind::Confidence,
+        bhava::traits::TraitLevel::Highest,
+    );
+    b.set_trait(
+        bhava::traits::TraitKind::Patience,
+        bhava::traits::TraitLevel::Highest,
+    );
+
+    c.bench_function("npc_blend", |b_iter| {
+        b_iter.iter(|| black_box(a.blend(&b, 0.5)));
+    });
+}
+
+criterion_group!(
+    personality_benches,
+    bench_npc_personality_new,
+    bench_npc_personality_inspector_summary,
+    bench_npc_compatibility,
+    bench_npc_blend,
+);
 
 criterion_main!(
     editor_benches,
@@ -348,4 +459,6 @@ criterion_main!(
     viewport_benches,
     expr_benches,
     hw_benches,
+    history_benches,
+    personality_benches,
 );

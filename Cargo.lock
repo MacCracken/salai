@@ -867,6 +867,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-channel"
+version = "0.5.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82b8f8f868b36967f9606790d1903570de9ceaf870a7bf9fbbd3016d636a2cb2"
+dependencies = [
+ "crossbeam-utils",
+]
+
+[[package]]
 name = "crossbeam-deque"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1937,6 +1946,7 @@ version = "0.23.3"
 dependencies = [
  "anyhow",
  "clap",
+ "crossbeam-channel",
  "hisab",
  "serde",
  "serde_json",
@@ -2858,9 +2868,9 @@ dependencies = [
 
 [[package]]
 name = "ranga"
-version = "0.21.4"
+version = "0.24.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "795e7e4dc0e7d12b923cc2bc8b0043e5b9c2c15daf62aa8cd5639f9d515e3301"
+checksum = "4334ceaab2846ba8e10920fa971efea61b13329dc45e89bfb643edd0c377e884"
 dependencies = [
  "serde",
  "serde_json",

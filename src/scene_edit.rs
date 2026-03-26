@@ -138,6 +138,8 @@ pub fn add_component(
                     Material {
                         color: [1.0, 1.0, 1.0, 1.0],
                         texture: None,
+                        metallic: 0.0,
+                        roughness: 0.5,
                     },
                 )
                 .unwrap();

@@ -103,6 +103,8 @@ mod tests {
                 Material {
                     color: [1.0, 0.0, 0.0, 1.0],
                     texture: Some("brick.png".into()),
+                    metallic: 0.0,
+                    roughness: 0.5,
                 },
             )
             .unwrap();
@@ -143,6 +145,8 @@ mod tests {
                 Material {
                     color: [0.1, 0.2, 0.3, 1.0],
                     texture: None,
+                    metallic: 0.0,
+                    roughness: 0.5,
                 },
             )
             .unwrap();
@@ -213,6 +217,8 @@ mod tests {
                 Material {
                     color: [0.0, 0.0, 0.0, 1.0],
                     texture: None,
+                    metallic: 0.0,
+                    roughness: 0.5,
                 },
             )
             .unwrap();

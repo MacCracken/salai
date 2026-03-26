@@ -30,7 +30,9 @@ pub fn inspector_panel(
         ui.menu_button("+ Component", |ui| {
             for &comp_type in crate::scene_edit::COMPONENT_TYPES {
                 if ui.button(comp_type).clicked() {
-                    crate::scene_edit::add_component(world, entity, comp_type, history);
+                    if let Err(e) = crate::scene_edit::add_component(world, entity, comp_type, history) {
+                        tracing::error!(error = %e, component = comp_type, "failed to add component");
+                    }
                     ui.close_menu();
                 }
             }
@@ -69,13 +71,14 @@ pub fn expr_field(ui: &mut egui::Ui, label: &str, value: &mut f64, buf: &mut Str
     ui.horizontal(|ui| {
         ui.label(label);
         let response = ui.text_edit_singleline(buf);
-        if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-            if let Ok(v) = muharrir::eval_f64(buf) {
-                *value = v;
-                *buf = format!("{v:.4}");
-                tracing::debug!(label, value = v, "expression evaluated");
-                return true;
-            }
+        if response.lost_focus()
+            && ui.input(|i| i.key_pressed(egui::Key::Enter))
+            && let Ok(v) = muharrir::eval_f64(buf)
+        {
+            *value = v;
+            *buf = format!("{v:.4}");
+            tracing::debug!(label, value = v, "expression evaluated");
+            return true;
         }
         false
     })

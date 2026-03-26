@@ -50,6 +50,7 @@ impl Default for EditorState {
 
 impl EditorState {
     /// Select a single entity (replaces any existing selection).
+    #[inline]
     pub fn select(&mut self, entity: kiran::Entity) {
         self.selected_entities.clear();
         self.selected_entities.push(entity.id());
@@ -80,6 +81,7 @@ impl EditorState {
 
     /// Get the primary selected entity (first in selection).
     #[must_use]
+    #[inline]
     pub fn selected(&self) -> Option<kiran::Entity> {
         self.selected_entities
             .first()
@@ -104,6 +106,7 @@ impl EditorState {
 
     /// Check if a specific entity is selected.
     #[must_use]
+    #[inline]
     pub fn is_selected(&self, entity: kiran::Entity) -> bool {
         self.selected_entities.contains(&entity.id())
     }
@@ -176,8 +179,9 @@ impl EditorApp {
 
     /// Step the simulation by one frame (when paused).
     pub fn step_frame(&mut self) {
-        if self.state.play_state == PlayState::Paused {
-            let clock = self.world.get_resource_mut::<GameClock>().unwrap();
+        if self.state.play_state == PlayState::Paused
+            && let Some(clock) = self.world.get_resource_mut::<GameClock>()
+        {
             clock.tick(1.0 / 60.0);
         }
     }

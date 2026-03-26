@@ -91,7 +91,9 @@ impl AnimationEditor {
         if !self.playing {
             return;
         }
-        if let Some(clip) = &self.clip {
+        if let Some(clip) = &self.clip
+            && clip.duration > 0.0
+        {
             self.playhead += dt * self.speed;
             if self.playhead > clip.duration {
                 self.playhead %= clip.duration;
@@ -101,33 +103,30 @@ impl AnimationEditor {
 
     /// Add a keyframe to a track at the current playhead position.
     pub fn add_keyframe(&mut self, track_index: usize, values: Vec<f32>) {
-        if let Some(clip) = &mut self.clip {
-            if let Some(track) = clip.tracks.get_mut(track_index) {
-                track.keyframes.push(AnimKeyframe {
-                    time: self.playhead,
-                    values,
-                });
-                track
-                    .keyframes
-                    .sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
-                tracing::debug!(track = track_index, time = self.playhead, "keyframe added");
-            }
+        if let Some(clip) = &mut self.clip
+            && let Some(track) = clip.tracks.get_mut(track_index)
+        {
+            track.keyframes.push(AnimKeyframe {
+                time: self.playhead,
+                values,
+            });
+            track.keyframes.sort_by(|a, b| a.time.total_cmp(&b.time));
+            tracing::debug!(track = track_index, time = self.playhead, "keyframe added");
         }
     }
 
     /// Remove a keyframe from a track by index.
     pub fn remove_keyframe(&mut self, track_index: usize, keyframe_index: usize) {
-        if let Some(clip) = &mut self.clip {
-            if let Some(track) = clip.tracks.get_mut(track_index) {
-                if keyframe_index < track.keyframes.len() {
-                    track.keyframes.remove(keyframe_index);
-                    tracing::debug!(
-                        track = track_index,
-                        keyframe = keyframe_index,
-                        "keyframe removed"
-                    );
-                }
-            }
+        if let Some(clip) = &mut self.clip
+            && let Some(track) = clip.tracks.get_mut(track_index)
+            && keyframe_index < track.keyframes.len()
+        {
+            track.keyframes.remove(keyframe_index);
+            tracing::debug!(
+                track = track_index,
+                keyframe = keyframe_index,
+                "keyframe removed"
+            );
         }
     }
 }
@@ -178,7 +177,7 @@ pub fn animation_panel(ui: &mut egui::Ui, editor: &mut AnimationEditor) {
     // Track list with keyframe indicators
     let duration = clip.duration;
     egui::ScrollArea::vertical().show(ui, |ui| {
-        for (_track_idx, track) in clip.tracks.iter().enumerate() {
+        for track in &clip.tracks {
             ui.horizontal(|ui| {
                 ui.label(format!("{} — {}", track.target, track.property));
                 ui.label(format!("({} keys)", track.keyframes.len()));
@@ -237,55 +236,63 @@ mod tests {
 
     #[test]
     fn tick_when_not_playing() {
-        let mut e = AnimationEditor::default();
-        e.clip = Some(AnimClipState {
-            name: "test".into(),
-            duration: 2.0,
-            tracks: vec![],
-        });
+        let mut e = AnimationEditor {
+            clip: Some(AnimClipState {
+                name: "test".into(),
+                duration: 2.0,
+                tracks: vec![],
+            }),
+            ..Default::default()
+        };
         e.tick(0.1);
         assert_eq!(e.playhead, 0.0);
     }
 
     #[test]
     fn tick_advances_playhead() {
-        let mut e = AnimationEditor::default();
-        e.clip = Some(AnimClipState {
-            name: "test".into(),
-            duration: 2.0,
-            tracks: vec![],
-        });
-        e.playing = true;
+        let mut e = AnimationEditor {
+            clip: Some(AnimClipState {
+                name: "test".into(),
+                duration: 2.0,
+                tracks: vec![],
+            }),
+            playing: true,
+            ..Default::default()
+        };
         e.tick(0.5);
         assert!((e.playhead - 0.5).abs() < 0.01);
     }
 
     #[test]
     fn tick_loops() {
-        let mut e = AnimationEditor::default();
-        e.clip = Some(AnimClipState {
-            name: "test".into(),
-            duration: 1.0,
-            tracks: vec![],
-        });
-        e.playing = true;
+        let mut e = AnimationEditor {
+            clip: Some(AnimClipState {
+                name: "test".into(),
+                duration: 1.0,
+                tracks: vec![],
+            }),
+            playing: true,
+            ..Default::default()
+        };
         e.tick(1.5);
         assert!(e.playhead < 1.0);
     }
 
     #[test]
     fn add_keyframe() {
-        let mut e = AnimationEditor::default();
-        e.clip = Some(AnimClipState {
-            name: "test".into(),
-            duration: 2.0,
-            tracks: vec![AnimTrack {
-                target: "Joint 0".into(),
-                property: "Translation".into(),
-                keyframes: vec![],
-            }],
-        });
-        e.playhead = 0.5;
+        let mut e = AnimationEditor {
+            clip: Some(AnimClipState {
+                name: "test".into(),
+                duration: 2.0,
+                tracks: vec![AnimTrack {
+                    target: "Joint 0".into(),
+                    property: "Translation".into(),
+                    keyframes: vec![],
+                }],
+            }),
+            playhead: 0.5,
+            ..Default::default()
+        };
         e.add_keyframe(0, vec![1.0, 2.0, 3.0]);
         assert_eq!(e.clip.as_ref().unwrap().tracks[0].keyframes.len(), 1);
         assert_eq!(e.clip.as_ref().unwrap().tracks[0].keyframes[0].time, 0.5);
@@ -293,25 +300,27 @@ mod tests {
 
     #[test]
     fn remove_keyframe() {
-        let mut e = AnimationEditor::default();
-        e.clip = Some(AnimClipState {
-            name: "test".into(),
-            duration: 2.0,
-            tracks: vec![AnimTrack {
-                target: "Joint 0".into(),
-                property: "Translation".into(),
-                keyframes: vec![
-                    AnimKeyframe {
-                        time: 0.0,
-                        values: vec![0.0, 0.0, 0.0],
-                    },
-                    AnimKeyframe {
-                        time: 1.0,
-                        values: vec![1.0, 1.0, 1.0],
-                    },
-                ],
-            }],
-        });
+        let mut e = AnimationEditor {
+            clip: Some(AnimClipState {
+                name: "test".into(),
+                duration: 2.0,
+                tracks: vec![AnimTrack {
+                    target: "Joint 0".into(),
+                    property: "Translation".into(),
+                    keyframes: vec![
+                        AnimKeyframe {
+                            time: 0.0,
+                            values: vec![0.0, 0.0, 0.0],
+                        },
+                        AnimKeyframe {
+                            time: 1.0,
+                            values: vec![1.0, 1.0, 1.0],
+                        },
+                    ],
+                }],
+            }),
+            ..Default::default()
+        };
         e.remove_keyframe(0, 0);
         assert_eq!(e.clip.as_ref().unwrap().tracks[0].keyframes.len(), 1);
         assert_eq!(e.clip.as_ref().unwrap().tracks[0].keyframes[0].time, 1.0);
@@ -319,26 +328,28 @@ mod tests {
 
     #[test]
     fn add_keyframe_maintains_sort() {
-        let mut e = AnimationEditor::default();
-        e.clip = Some(AnimClipState {
-            name: "test".into(),
-            duration: 3.0,
-            tracks: vec![AnimTrack {
-                target: "J0".into(),
-                property: "T".into(),
-                keyframes: vec![
-                    AnimKeyframe {
-                        time: 0.0,
-                        values: vec![0.0],
-                    },
-                    AnimKeyframe {
-                        time: 2.0,
-                        values: vec![2.0],
-                    },
-                ],
-            }],
-        });
-        e.playhead = 1.0;
+        let mut e = AnimationEditor {
+            clip: Some(AnimClipState {
+                name: "test".into(),
+                duration: 3.0,
+                tracks: vec![AnimTrack {
+                    target: "J0".into(),
+                    property: "T".into(),
+                    keyframes: vec![
+                        AnimKeyframe {
+                            time: 0.0,
+                            values: vec![0.0],
+                        },
+                        AnimKeyframe {
+                            time: 2.0,
+                            values: vec![2.0],
+                        },
+                    ],
+                }],
+            }),
+            playhead: 1.0,
+            ..Default::default()
+        };
         e.add_keyframe(0, vec![1.0]);
         let times: Vec<f32> = e.clip.as_ref().unwrap().tracks[0]
             .keyframes
@@ -350,15 +361,32 @@ mod tests {
 
     #[test]
     fn speed_multiplier() {
-        let mut e = AnimationEditor::default();
-        e.clip = Some(AnimClipState {
-            name: "test".into(),
-            duration: 10.0,
-            tracks: vec![],
-        });
-        e.playing = true;
-        e.speed = 2.0;
+        let mut e = AnimationEditor {
+            clip: Some(AnimClipState {
+                name: "test".into(),
+                duration: 10.0,
+                tracks: vec![],
+            }),
+            playing: true,
+            speed: 2.0,
+            ..Default::default()
+        };
         e.tick(0.5);
         assert!((e.playhead - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn tick_zero_duration_no_panic() {
+        let mut e = AnimationEditor {
+            clip: Some(AnimClipState {
+                name: "zero".into(),
+                duration: 0.0,
+                tracks: vec![],
+            }),
+            playing: true,
+            ..Default::default()
+        };
+        e.tick(1.0);
+        assert_eq!(e.playhead, 0.0);
     }
 }

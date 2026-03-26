@@ -61,6 +61,7 @@ pub struct AssetEntry {
 }
 
 /// State for the asset browser.
+#[derive(Default)]
 pub struct AssetBrowser {
     /// Root directory being browsed.
     pub root: Option<PathBuf>,
@@ -70,17 +71,6 @@ pub struct AssetBrowser {
     pub selected: Option<usize>,
     /// Filter by asset kind (None = show all).
     pub filter: Option<AssetKind>,
-}
-
-impl Default for AssetBrowser {
-    fn default() -> Self {
-        Self {
-            root: None,
-            entries: Vec::new(),
-            selected: None,
-            filter: None,
-        }
-    }
 }
 
 impl AssetBrowser {

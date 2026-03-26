@@ -41,10 +41,10 @@ impl SalaiApp {
     #[must_use]
     pub fn new(scene_path: Option<&str>) -> Self {
         let mut editor = EditorApp::new();
-        if let Some(path) = scene_path {
-            if let Err(e) = editor.load_scene(path) {
-                tracing::error!(path, error = %e, "failed to load scene");
-            }
+        if let Some(path) = scene_path
+            && let Err(e) = editor.load_scene(path)
+        {
+            tracing::error!(path, error = %e, "failed to load scene");
         }
 
         Self {
@@ -157,7 +157,7 @@ impl eframe::App for SalaiApp {
         // Central viewport area
         egui::CentralPanel::default().show(ctx, |ui| {
             if self.editor.state.show_viewport {
-                let entities = self.editor.tracked_entities.clone();
+                let entities = self.editor.tracked_entities.to_vec();
                 viewport_panel::viewport_panel_with_picking(
                     ui,
                     &mut self.viewport,
@@ -180,12 +180,13 @@ impl eframe::App for SalaiApp {
 
         // Step simulation if playing
         if self.editor.state.is_playing() {
-            let clock = self
+            if let Some(clock) = self
                 .editor
                 .world
                 .get_resource_mut::<kiran::world::GameClock>()
-                .unwrap();
-            clock.tick(1.0 / 60.0);
+            {
+                clock.tick(1.0 / 60.0);
+            }
             ctx.request_repaint();
         }
     }
@@ -200,19 +201,20 @@ fn handle_shortcuts(
 ) {
     ctx.input(|input| {
         // Ctrl+Z — undo
-        if input.modifiers.ctrl && input.key_pressed(egui::Key::Z) && !input.modifiers.shift {
-            if let Some(entry) = history.undo() {
-                console.info("edit", format!("Undo: {}", entry.action()));
-            }
+        if input.modifiers.ctrl
+            && input.key_pressed(egui::Key::Z)
+            && !input.modifiers.shift
+            && let Some(entry) = history.undo()
+        {
+            console.info("edit", format!("Undo: {}", entry.action()));
         }
 
         // Ctrl+Shift+Z or Ctrl+Y — redo
-        if (input.modifiers.ctrl && input.modifiers.shift && input.key_pressed(egui::Key::Z))
-            || (input.modifiers.ctrl && input.key_pressed(egui::Key::Y))
+        if ((input.modifiers.ctrl && input.modifiers.shift && input.key_pressed(egui::Key::Z))
+            || (input.modifiers.ctrl && input.key_pressed(egui::Key::Y)))
+            && let Some(entry) = history.redo()
         {
-            if let Some(entry) = history.redo() {
-                console.info("edit", format!("Redo: {}", entry.action()));
-            }
+            console.info("edit", format!("Redo: {}", entry.action()));
         }
 
         // Ctrl+S — save scene

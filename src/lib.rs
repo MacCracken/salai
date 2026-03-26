@@ -25,12 +25,12 @@ pub use muharrir::history::{self, Action, History};
 pub use muharrir::hw::{self, HardwareProfile, QualityTier};
 
 pub use audio::AudioInfo;
-pub use ui::animation_panel::{AnimClipState, AnimationEditor};
-pub use ui::terrain_panel::{BrushTool, TerrainEditor};
 pub use editor::{EditorApp, EditorState, PlayState};
 pub use hierarchy::{HierarchyNode, build_hierarchy, flatten_hierarchy};
 pub use inspector::{ComponentInfo, inspect_entity};
 pub use personality::{NpcPersonality, PersonalitySummary};
 pub use texture::TextureInfo;
 pub use ui::SalaiApp;
+pub use ui::animation_panel::{AnimClipState, AnimationEditor};
+pub use ui::terrain_panel::{BrushTool, TerrainEditor};
 pub use viewport::{GizmoMode, ViewportState};

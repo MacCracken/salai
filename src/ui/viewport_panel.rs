@@ -20,40 +20,39 @@ pub fn viewport_panel_with_picking(
     handle_mouse_input(ui, &response, viewport);
 
     // Handle entity picking on click
-    if response.clicked() {
-        if let Some((world, entities, state)) = picking {
-            if let Some(pointer_pos) = response.interact_pointer_pos() {
-                let (ndc_x, ndc_y) = crate::picking::pixel_to_ndc(
-                    pointer_pos.x - rect.left(),
-                    pointer_pos.y - rect.top(),
-                    rect.width(),
-                    rect.height(),
-                );
-                let view_proj = viewport.camera.view_projection();
-                if let Some(hit) = crate::picking::pick_entity(
-                    world,
-                    entities,
-                    viewport.camera.position,
-                    view_proj,
-                    ndc_x,
-                    ndc_y,
-                    0.5,
-                ) {
-                    let modifiers = ui.input(|i| i.modifiers);
-                    if modifiers.shift {
-                        state.select_add(hit.entity);
-                    } else if modifiers.ctrl || modifiers.mac_cmd {
-                        state.select_toggle(hit.entity);
-                    } else {
-                        state.select(hit.entity);
-                    }
-                    tracing::info!(
-                        entity = %hit.entity,
-                        distance = hit.distance,
-                        "entity picked in viewport"
-                    );
-                }
+    if response.clicked()
+        && let Some((world, entities, state)) = picking
+        && let Some(pointer_pos) = response.interact_pointer_pos()
+    {
+        let (ndc_x, ndc_y) = crate::picking::pixel_to_ndc(
+            pointer_pos.x - rect.left(),
+            pointer_pos.y - rect.top(),
+            rect.width(),
+            rect.height(),
+        );
+        let view_proj = viewport.camera.view_projection();
+        if let Some(hit) = crate::picking::pick_entity(
+            world,
+            entities,
+            viewport.camera.position,
+            view_proj,
+            ndc_x,
+            ndc_y,
+            0.5,
+        ) {
+            let modifiers = ui.input(|i| i.modifiers);
+            if modifiers.shift {
+                state.select_add(hit.entity);
+            } else if modifiers.ctrl || modifiers.mac_cmd {
+                state.select_toggle(hit.entity);
+            } else {
+                state.select(hit.entity);
             }
+            tracing::info!(
+                entity = %hit.entity,
+                distance = hit.distance,
+                "entity picked in viewport"
+            );
         }
     }
 
@@ -215,8 +214,10 @@ mod tests {
 
     #[test]
     fn grid_toggle() {
-        let mut vp = ViewportState::default();
-        vp.show_grid = false;
+        let vp = ViewportState {
+            show_grid: false,
+            ..Default::default()
+        };
         assert!(!vp.show_grid);
     }
 }

@@ -113,7 +113,7 @@ fn dominant_group(profile: &PersonalityProfile) -> String {
                 .group_average(a.0)
                 .abs()
                 .partial_cmp(&profile.group_average(b.0).abs())
-                .unwrap()
+                .unwrap_or(std::cmp::Ordering::Equal)
         })
         .map(|&(_, name)| name.to_string())
         .unwrap_or_else(|| "None".into())
@@ -134,7 +134,7 @@ fn mood_label(mood: &MoodVector) -> String {
 
     dominant
         .iter()
-        .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
+        .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal))
         .filter(|&&(v, _)| v > 0.1)
         .map(|&(_, label)| label.to_string())
         .unwrap_or_else(|| "Neutral".into())

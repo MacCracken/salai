@@ -77,7 +77,6 @@ pub fn amplitude_to_db_str(amp: f32) -> String {
 }
 
 /// Create an audio buffer from interleaved f32 samples.
-#[must_use]
 pub fn buffer_from_samples(
     samples: Vec<f32>,
     channels: u32,

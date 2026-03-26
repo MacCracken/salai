@@ -51,12 +51,14 @@ pub fn toolbar(
         ui.group(|ui| {
             if ui.button("+ Entity").clicked() {
                 let name = format!("Entity {}", editor.entity_count() + 1);
-                let _entity = crate::scene_edit::add_entity(
+                if let Err(e) = crate::scene_edit::add_entity(
                     &mut editor.world,
                     &mut editor.tracked_entities,
                     history,
                     &name,
-                );
+                ) {
+                    tracing::error!(error = %e, "failed to add entity");
+                }
                 tracing::info!(name, "entity added from toolbar");
             }
         });

@@ -3340,7 +3340,7 @@ dependencies = [
 
 [[package]]
 name = "soorat"
-version = "0.23.3"
+version = "0.24.3"
 dependencies = [
  "bytemuck",
  "gltf",

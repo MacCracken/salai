@@ -377,7 +377,7 @@ fn personality_editing_workflow() {
 
     // Compatibility check
     let compat = guard.compatibility(&merchant);
-    assert!(compat >= 0.0 && compat <= 1.0);
+    assert!((0.0..=1.0).contains(&compat));
 
     // Blend for offspring/hybrid NPC
     let hybrid = guard.blend(&merchant, 0.5);
@@ -470,7 +470,7 @@ fn multi_selection_workflow() {
 #[test]
 fn scene_edit_with_multi_select() {
     let mut app = EditorApp::new();
-    let mut history = History::new();
+    let _history = History::new();
 
     let e1 = app.spawn_entity();
     app.world

@@ -7,17 +7,14 @@ use kiran::scene::{EntityDef, LightComponent, Material, Name, Position, SceneDef
 use muharrir::history::{Action, History};
 
 /// Add an entity to the world and record the action in history.
-#[must_use]
 pub fn add_entity(
     world: &mut World,
     tracked: &mut Vec<kiran::Entity>,
     history: &mut History,
     name: &str,
-) -> kiran::Entity {
+) -> anyhow::Result<kiran::Entity> {
     let entity = world.spawn();
-    world
-        .insert_component(entity, Name(name.to_string()))
-        .unwrap();
+    world.insert_component(entity, Name(name.to_string()))?;
     tracked.push(entity);
 
     history.record(
@@ -28,7 +25,7 @@ pub fn add_entity(
         ),
     );
     tracing::info!(entity = %entity, name, "entity added");
-    entity
+    Ok(entity)
 }
 
 /// Set the position of an entity and record the change.
@@ -37,13 +34,13 @@ pub fn set_position(
     entity: kiran::Entity,
     position: hisab::Vec3,
     history: &mut History,
-) {
+) -> anyhow::Result<()> {
     let before = world
         .get_component::<Position>(entity)
         .map(|p| [p.0.x, p.0.y, p.0.z])
         .unwrap_or([0.0, 0.0, 0.0]);
 
-    world.insert_component(entity, Position(position)).unwrap();
+    world.insert_component(entity, Position(position))?;
 
     history.record(
         "inspector",
@@ -56,18 +53,22 @@ pub fn set_position(
             }),
         ),
     );
+    Ok(())
 }
 
 /// Set the name of an entity and record the change.
-pub fn set_name(world: &mut World, entity: kiran::Entity, new_name: &str, history: &mut History) {
+pub fn set_name(
+    world: &mut World,
+    entity: kiran::Entity,
+    new_name: &str,
+    history: &mut History,
+) -> anyhow::Result<()> {
     let before = world
         .get_component::<Name>(entity)
         .map(|n| n.0.clone())
         .unwrap_or_default();
 
-    world
-        .insert_component(entity, Name(new_name.to_string()))
-        .unwrap();
+    world.insert_component(entity, Name(new_name.to_string()))?;
 
     history.record(
         "inspector",
@@ -80,6 +81,7 @@ pub fn set_name(world: &mut World, entity: kiran::Entity, new_name: &str, histor
             }),
         ),
     );
+    Ok(())
 }
 
 /// Set the light intensity of an entity and record the change.
@@ -88,14 +90,12 @@ pub fn set_light_intensity(
     entity: kiran::Entity,
     intensity: f32,
     history: &mut History,
-) {
+) -> anyhow::Result<()> {
     let before = world
         .get_component::<LightComponent>(entity)
         .map(|l| l.intensity);
 
-    world
-        .insert_component(entity, LightComponent { intensity })
-        .unwrap();
+    world.insert_component(entity, LightComponent { intensity })?;
 
     history.record(
         "inspector",
@@ -108,6 +108,7 @@ pub fn set_light_intensity(
             }),
         ),
     );
+    Ok(())
 }
 
 /// Add a component to an entity by type name. Records in history.
@@ -116,37 +117,31 @@ pub fn add_component(
     entity: kiran::Entity,
     component_type: &str,
     history: &mut History,
-) {
+) -> anyhow::Result<()> {
     match component_type {
         "Position" => {
-            world
-                .insert_component(entity, Position(hisab::Vec3::ZERO))
-                .unwrap();
+            world.insert_component(entity, Position(hisab::Vec3::ZERO))?;
         }
         "Light" => {
-            world
-                .insert_component(entity, LightComponent { intensity: 1.0 })
-                .unwrap();
+            world.insert_component(entity, LightComponent { intensity: 1.0 })?;
         }
         "Tags" => {
-            world.insert_component(entity, Tags(Vec::new())).unwrap();
+            world.insert_component(entity, Tags(Vec::new()))?;
         }
         "Material" => {
-            world
-                .insert_component(
-                    entity,
-                    Material {
-                        color: [1.0, 1.0, 1.0, 1.0],
-                        texture: None,
-                        metallic: 0.0,
-                        roughness: 0.5,
-                    },
-                )
-                .unwrap();
+            world.insert_component(
+                entity,
+                Material {
+                    color: [1.0, 1.0, 1.0, 1.0],
+                    texture: None,
+                    metallic: 0.0,
+                    roughness: 0.5,
+                },
+            )?;
         }
         _ => {
             tracing::warn!(component_type, "unknown component type");
-            return;
+            return Ok(());
         }
     }
 
@@ -161,6 +156,7 @@ pub fn add_component(
         ),
     );
     tracing::info!(entity = %entity, component_type, "component added");
+    Ok(())
 }
 
 /// Remove a component from an entity by type name. Records in history.
@@ -296,7 +292,6 @@ fn extract_entity_def(world: &World, entity: kiran::Entity) -> EntityDef {
 }
 
 /// Serialize a scene to TOML string.
-#[must_use]
 pub fn scene_to_toml(scene: &SceneDefinition) -> Result<String, toml::ser::Error> {
     toml::to_string_pretty(scene)
 }
@@ -319,7 +314,7 @@ mod tests {
         let mut tracked = Vec::new();
         let mut history = History::new();
 
-        let e = add_entity(&mut world, &mut tracked, &mut history, "Player");
+        let e = add_entity(&mut world, &mut tracked, &mut history, "Player").unwrap();
         assert!(world.is_alive(e));
         assert_eq!(tracked.len(), 1);
         assert_eq!(history.len(), 1);
@@ -337,7 +332,7 @@ mod tests {
             .insert_component(e, Position(hisab::Vec3::ZERO))
             .unwrap();
 
-        set_position(&mut world, e, hisab::Vec3::new(1.0, 2.0, 3.0), &mut history);
+        set_position(&mut world, e, hisab::Vec3::new(1.0, 2.0, 3.0), &mut history).unwrap();
 
         let pos = world.get_component::<Position>(e).unwrap();
         assert_eq!(pos.0.x, 1.0);
@@ -356,7 +351,7 @@ mod tests {
         let e = world.spawn();
         world.insert_component(e, Name("Old".into())).unwrap();
 
-        set_name(&mut world, e, "New", &mut history);
+        set_name(&mut world, e, "New", &mut history).unwrap();
 
         let name = world.get_component::<Name>(e).unwrap();
         assert_eq!(name.0, "New");
@@ -369,7 +364,7 @@ mod tests {
         let mut history = History::new();
         let e = world.spawn();
 
-        set_light_intensity(&mut world, e, 0.8, &mut history);
+        set_light_intensity(&mut world, e, 0.8, &mut history).unwrap();
 
         let light = world.get_component::<LightComponent>(e).unwrap();
         assert_eq!(light.intensity, 0.8);
@@ -452,9 +447,9 @@ mod tests {
         let mut tracked = Vec::new();
         let mut history = History::new();
 
-        let e = add_entity(&mut world, &mut tracked, &mut history, "A");
-        set_position(&mut world, e, hisab::Vec3::new(5.0, 0.0, 0.0), &mut history);
-        set_name(&mut world, e, "B", &mut history);
+        let e = add_entity(&mut world, &mut tracked, &mut history, "A").unwrap();
+        set_position(&mut world, e, hisab::Vec3::new(5.0, 0.0, 0.0), &mut history).unwrap();
+        set_name(&mut world, e, "B", &mut history).unwrap();
 
         assert_eq!(history.len(), 3);
 
@@ -483,7 +478,7 @@ mod tests {
         let mut history = History::new();
         let e = world.spawn();
 
-        add_component(&mut world, e, "Position", &mut history);
+        add_component(&mut world, e, "Position", &mut history).unwrap();
         assert!(world.get_component::<Position>(e).is_some());
         assert_eq!(history.len(), 1);
     }
@@ -495,7 +490,7 @@ mod tests {
         let e = world.spawn();
 
         for &comp_type in COMPONENT_TYPES {
-            add_component(&mut world, e, comp_type, &mut history);
+            add_component(&mut world, e, comp_type, &mut history).unwrap();
         }
         assert_eq!(history.len(), 4);
         assert!(world.get_component::<Position>(e).is_some());
@@ -534,7 +529,7 @@ mod tests {
         let mut history = History::new();
         let e = world.spawn();
 
-        add_component(&mut world, e, "FakeComponent", &mut history);
+        add_component(&mut world, e, "FakeComponent", &mut history).unwrap();
         assert_eq!(history.len(), 0); // not recorded
     }
 

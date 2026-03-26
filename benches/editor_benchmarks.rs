@@ -88,6 +88,8 @@ fn bench_inspect_entity_full(c: &mut Criterion) {
             kiran::scene::Material {
                 color: [1.0, 0.0, 0.0, 1.0],
                 texture: Some("tex.png".into()),
+                metallic: 0.0,
+                roughness: 0.5,
             },
         )
         .unwrap();
@@ -529,7 +531,8 @@ fn bench_scene_add_entity(c: &mut Criterion) {
         let mut tracked = Vec::new();
         let mut history = muharrir::History::new();
         b.iter(|| {
-            let _e = salai::scene_edit::add_entity(&mut world, &mut tracked, &mut history, "Bench");
+            let _e = salai::scene_edit::add_entity(&mut world, &mut tracked, &mut history, "Bench")
+                .unwrap();
             black_box(&tracked);
         });
     });

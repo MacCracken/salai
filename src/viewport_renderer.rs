@@ -18,7 +18,7 @@ pub struct EntityVisual {
 /// Generate a grid as a LineBatch for the ground plane.
 #[must_use]
 pub fn build_grid_lines(grid_size: f32, count: i32) -> Vec<(Vec3, Vec3, [f32; 4])> {
-    let mut lines = Vec::new();
+    let mut lines = Vec::with_capacity((2 * count as usize + 1) * 2);
     let extent = count as f32 * grid_size;
     let grid_color = [0.3, 0.3, 0.3, 0.4];
     let x_axis_color = [0.8, 0.2, 0.2, 0.6];
@@ -52,7 +52,7 @@ pub fn build_gizmo_lines(
     mode: crate::viewport::GizmoMode,
     scale: f32,
 ) -> Vec<(Vec3, Vec3, [f32; 4])> {
-    let mut lines = Vec::new();
+    let mut lines = Vec::with_capacity(72);
     let red = [1.0, 0.2, 0.2, 1.0];
     let green = [0.2, 1.0, 0.2, 1.0];
     let blue = [0.2, 0.2, 1.0, 1.0];

@@ -43,14 +43,14 @@ pub fn pick_entity(
             continue;
         };
 
-        if let Some(t) = ray_sphere_intersect(ray.0, ray.1, pos.0, pick_radius) {
-            if closest.as_ref().is_none_or(|c| t < c.distance) {
-                closest = Some(PickResult {
-                    entity,
-                    distance: t,
-                    position: pos.0,
-                });
-            }
+        if let Some(t) = ray_sphere_intersect(ray.0, ray.1, pos.0, pick_radius)
+            && closest.as_ref().is_none_or(|c| t < c.distance)
+        {
+            closest = Some(PickResult {
+                entity,
+                distance: t,
+                position: pos.0,
+            });
         }
     }
 
@@ -61,17 +61,18 @@ pub fn pick_entity(
 ///
 /// Returns `(origin, direction)` or `None` if the inverse matrix is degenerate.
 #[must_use]
+#[inline]
 fn screen_to_ray(
     camera_pos: Vec3,
     view_proj: Mat4,
     ndc_x: f32,
     ndc_y: f32,
 ) -> Option<(Vec3, Vec3)> {
-    let inv = view_proj.inverse();
-    // Check for degenerate matrix
-    if inv.x_axis.x.is_nan() {
+    let det = view_proj.determinant();
+    if det.abs() < f32::EPSILON {
         return None;
     }
+    let inv = view_proj.inverse();
 
     let near = inv.project_point3(Vec3::new(ndc_x, ndc_y, -1.0));
     let far = inv.project_point3(Vec3::new(ndc_x, ndc_y, 1.0));
@@ -86,6 +87,7 @@ fn screen_to_ray(
 
 /// Ray-sphere intersection. Returns distance along ray or None.
 #[must_use]
+#[inline]
 fn ray_sphere_intersect(origin: Vec3, direction: Vec3, center: Vec3, radius: f32) -> Option<f32> {
     let oc = origin - center;
     let a = direction.dot(direction);
@@ -116,6 +118,9 @@ fn ray_sphere_intersect(origin: Vec3, direction: Vec3, center: Vec3, radius: f32
 #[must_use]
 #[inline]
 pub fn pixel_to_ndc(x: f32, y: f32, width: f32, height: f32) -> (f32, f32) {
+    if width < f32::EPSILON || height < f32::EPSILON {
+        return (0.0, 0.0);
+    }
     let ndc_x = (2.0 * x / width) - 1.0;
     let ndc_y = 1.0 - (2.0 * y / height); // Y is flipped
     (ndc_x, ndc_y)
@@ -241,6 +246,31 @@ mod tests {
             &[e],
             Vec3::new(0.0, 0.0, 5.0),
             Mat4::IDENTITY,
+            0.0,
+            0.0,
+            1.0,
+        );
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn pixel_to_ndc_zero_dimensions() {
+        let (x, y) = pixel_to_ndc(100.0, 100.0, 0.0, 0.0);
+        assert_eq!(x, 0.0);
+        assert_eq!(y, 0.0);
+    }
+
+    #[test]
+    fn pick_entity_degenerate_matrix() {
+        let mut world = kiran::World::new();
+        let e = world.spawn();
+        world.insert_component(e, Position(Vec3::ZERO)).unwrap();
+
+        let result = pick_entity(
+            &world,
+            &[e],
+            Vec3::new(0.0, 0.0, 5.0),
+            Mat4::ZERO,
             0.0,
             0.0,
             1.0,

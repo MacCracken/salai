@@ -60,7 +60,7 @@ impl Profiler {
         self.frame_times
             .iter()
             .copied()
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .max_by(|a, b| a.total_cmp(b))
             .unwrap_or(0.0)
     }
 
@@ -70,7 +70,7 @@ impl Profiler {
         self.frame_times
             .iter()
             .copied()
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .min_by(|a, b| a.total_cmp(b))
             .unwrap_or(0.0)
     }
 
@@ -226,5 +226,12 @@ mod tests {
         p.clear();
         assert_eq!(p.frame_count, 0);
         assert!(p.frame_times().is_empty());
+    }
+
+    #[test]
+    fn profiler_empty_min_max() {
+        let p = Profiler::new(10);
+        assert_eq!(p.min_frame_time(), 0.0);
+        assert_eq!(p.max_frame_time(), 0.0);
     }
 }

@@ -3,6 +3,7 @@
 //! Casts a ray from the camera through the click point and tests against
 //! entity positions (sphere intersection) using [`hisab::geo`].
 
+use hisab::geo::{Ray, Sphere, ray_sphere};
 use hisab::{Mat4, Vec3};
 use kiran::scene::Position;
 
@@ -17,21 +18,32 @@ pub struct PickResult {
     pub position: Vec3,
 }
 
-/// Cast a ray from camera through a viewport point and find the nearest entity hit.
-///
-/// `ndc_x` and `ndc_y` are in normalized device coordinates (-1 to 1).
-/// `pick_radius` is the radius of the sphere around each entity position for hit testing.
+/// Parameters for a pick query.
+pub struct PickQuery {
+    pub camera_pos: Vec3,
+    pub view_proj: Mat4,
+    pub pixel_x: f32,
+    pub pixel_y: f32,
+    pub viewport_width: f32,
+    pub viewport_height: f32,
+    pub pick_radius: f32,
+}
+
+/// Cast a ray from camera through a viewport pixel and find the nearest entity hit.
 #[must_use]
 pub fn pick_entity(
     world: &kiran::World,
     entities: &[kiran::Entity],
-    camera_pos: Vec3,
-    view_proj: Mat4,
-    ndc_x: f32,
-    ndc_y: f32,
-    pick_radius: f32,
+    query: &PickQuery,
 ) -> Option<PickResult> {
-    let ray = screen_to_ray(camera_pos, view_proj, ndc_x, ndc_y)?;
+    let ray = viewport_ray(
+        query.camera_pos,
+        query.view_proj,
+        query.pixel_x,
+        query.pixel_y,
+        query.viewport_width,
+        query.viewport_height,
+    )?;
 
     let mut closest: Option<PickResult> = None;
 
@@ -43,7 +55,11 @@ pub fn pick_entity(
             continue;
         };
 
-        if let Some(t) = ray_sphere_intersect(ray.0, ray.1, pos.0, pick_radius)
+        let Ok(sphere) = Sphere::new(pos.0, query.pick_radius) else {
+            continue;
+        };
+
+        if let Some(t) = ray_sphere(&ray, &sphere)
             && closest.as_ref().is_none_or(|c| t < c.distance)
         {
             closest = Some(PickResult {
@@ -57,59 +73,38 @@ pub fn pick_entity(
     closest
 }
 
-/// Convert viewport click to a world-space ray.
+/// Build a world-space ray from a viewport pixel click.
 ///
-/// Returns `(origin, direction)` or `None` if the inverse matrix is degenerate.
+/// Uses [`hisab::transforms::screen_to_world_ray`] for the unprojection.
+/// Returns `None` if the view-projection matrix is degenerate.
 #[must_use]
 #[inline]
-fn screen_to_ray(
+fn viewport_ray(
     camera_pos: Vec3,
     view_proj: Mat4,
-    ndc_x: f32,
-    ndc_y: f32,
-) -> Option<(Vec3, Vec3)> {
+    pixel_x: f32,
+    pixel_y: f32,
+    viewport_width: f32,
+    viewport_height: f32,
+) -> Option<Ray> {
+    if viewport_width < f32::EPSILON || viewport_height < f32::EPSILON {
+        return None;
+    }
     let det = view_proj.determinant();
     if det.abs() < f32::EPSILON {
         return None;
     }
     let inv = view_proj.inverse();
 
-    let near = inv.project_point3(Vec3::new(ndc_x, ndc_y, -1.0));
-    let far = inv.project_point3(Vec3::new(ndc_x, ndc_y, 1.0));
+    let (_origin, direction) = hisab::transforms::screen_to_world_ray(
+        pixel_x,
+        pixel_y,
+        inv,
+        viewport_width,
+        viewport_height,
+    );
 
-    let direction = (far - near).normalize();
-    if direction.x.is_nan() {
-        return None;
-    }
-
-    Some((camera_pos, direction))
-}
-
-/// Ray-sphere intersection. Returns distance along ray or None.
-#[must_use]
-#[inline]
-fn ray_sphere_intersect(origin: Vec3, direction: Vec3, center: Vec3, radius: f32) -> Option<f32> {
-    let oc = origin - center;
-    let a = direction.dot(direction);
-    let b = 2.0 * oc.dot(direction);
-    let c = oc.dot(oc) - radius * radius;
-    let discriminant = b * b - 4.0 * a * c;
-
-    if discriminant < 0.0 {
-        return None;
-    }
-
-    let sqrt_d = discriminant.sqrt();
-    let t1 = (-b - sqrt_d) / (2.0 * a);
-    let t2 = (-b + sqrt_d) / (2.0 * a);
-
-    if t1 >= 0.0 {
-        Some(t1)
-    } else if t2 >= 0.0 {
-        Some(t2)
-    } else {
-        None // sphere is behind the ray
-    }
+    Ray::new(camera_pos, direction).ok()
 }
 
 /// Convert viewport pixel coordinates to NDC.
@@ -132,43 +127,35 @@ mod tests {
 
     #[test]
     fn ray_sphere_hit() {
-        let origin = Vec3::new(0.0, 0.0, 5.0);
-        let direction = Vec3::new(0.0, 0.0, -1.0);
-        let center = Vec3::ZERO;
-        let radius = 1.0;
+        let ray = Ray::new(Vec3::new(0.0, 0.0, 5.0), Vec3::new(0.0, 0.0, -1.0)).unwrap();
+        let sphere = Sphere::new(Vec3::ZERO, 1.0).unwrap();
 
-        let t = ray_sphere_intersect(origin, direction, center, radius).unwrap();
-        assert!((t - 4.0).abs() < 0.01); // hits at z=1
+        let t = ray_sphere(&ray, &sphere).unwrap();
+        assert!((t - 4.0).abs() < 0.01);
     }
 
     #[test]
     fn ray_sphere_miss() {
-        let origin = Vec3::new(0.0, 0.0, 5.0);
-        let direction = Vec3::new(0.0, 0.0, -1.0);
-        let center = Vec3::new(10.0, 0.0, 0.0); // far off to the side
-        let radius = 1.0;
+        let ray = Ray::new(Vec3::new(0.0, 0.0, 5.0), Vec3::new(0.0, 0.0, -1.0)).unwrap();
+        let sphere = Sphere::new(Vec3::new(10.0, 0.0, 0.0), 1.0).unwrap();
 
-        assert!(ray_sphere_intersect(origin, direction, center, radius).is_none());
+        assert!(ray_sphere(&ray, &sphere).is_none());
     }
 
     #[test]
     fn ray_sphere_behind() {
-        let origin = Vec3::new(0.0, 0.0, 5.0);
-        let direction = Vec3::new(0.0, 0.0, 1.0); // pointing away
-        let center = Vec3::ZERO;
-        let radius = 1.0;
+        let ray = Ray::new(Vec3::new(0.0, 0.0, 5.0), Vec3::new(0.0, 0.0, 1.0)).unwrap();
+        let sphere = Sphere::new(Vec3::ZERO, 1.0).unwrap();
 
-        assert!(ray_sphere_intersect(origin, direction, center, radius).is_none());
+        assert!(ray_sphere(&ray, &sphere).is_none());
     }
 
     #[test]
     fn ray_sphere_inside() {
-        let origin = Vec3::ZERO; // inside the sphere
-        let direction = Vec3::new(0.0, 0.0, -1.0);
-        let center = Vec3::ZERO;
-        let radius = 5.0;
+        let ray = Ray::new(Vec3::ZERO, Vec3::new(0.0, 0.0, -1.0)).unwrap();
+        let sphere = Sphere::new(Vec3::ZERO, 5.0).unwrap();
 
-        let t = ray_sphere_intersect(origin, direction, center, radius).unwrap();
+        let t = ray_sphere(&ray, &sphere).unwrap();
         assert!(t > 0.0);
     }
 
@@ -190,6 +177,18 @@ mod tests {
         assert!((y - (-1.0)).abs() < 0.01);
     }
 
+    fn query(camera_pos: Vec3, view_proj: Mat4, px: f32, py: f32, radius: f32) -> PickQuery {
+        PickQuery {
+            camera_pos,
+            view_proj,
+            pixel_x: px,
+            pixel_y: py,
+            viewport_width: 1280.0,
+            viewport_height: 720.0,
+            pick_radius: radius,
+        }
+    }
+
     #[test]
     fn pick_entity_finds_nearest() {
         let mut world = kiran::World::new();
@@ -202,13 +201,12 @@ mod tests {
             .insert_component(far, Position(Vec3::new(0.0, 0.0, -10.0)))
             .unwrap();
 
-        let camera_pos = Vec3::new(0.0, 0.0, 0.0);
-        let view_proj = Mat4::perspective_rh(std::f32::consts::FRAC_PI_4, 16.0 / 9.0, 0.1, 100.0)
-            * Mat4::look_at_rh(camera_pos, Vec3::new(0.0, 0.0, -1.0), Vec3::Y);
+        let cam = Vec3::new(0.0, 0.0, 0.0);
+        let vp = Mat4::perspective_rh(std::f32::consts::FRAC_PI_4, 16.0 / 9.0, 0.1, 100.0)
+            * Mat4::look_at_rh(cam, Vec3::new(0.0, 0.0, -1.0), Vec3::Y);
 
-        let result = pick_entity(&world, &[near, far], camera_pos, view_proj, 0.0, 0.0, 1.0);
-        let hit = result.unwrap();
-        assert_eq!(hit.entity, near); // nearer entity selected
+        let hit = pick_entity(&world, &[near, far], &query(cam, vp, 640.0, 360.0, 1.0)).unwrap();
+        assert_eq!(hit.entity, near);
     }
 
     #[test]
@@ -219,19 +217,24 @@ mod tests {
             .insert_component(e, Position(Vec3::new(100.0, 0.0, 0.0)))
             .unwrap();
 
-        let camera_pos = Vec3::new(0.0, 0.0, 5.0);
-        let view_proj = Mat4::perspective_rh(std::f32::consts::FRAC_PI_4, 16.0 / 9.0, 0.1, 100.0)
-            * Mat4::look_at_rh(camera_pos, Vec3::ZERO, Vec3::Y);
+        let cam = Vec3::new(0.0, 0.0, 5.0);
+        let vp = Mat4::perspective_rh(std::f32::consts::FRAC_PI_4, 16.0 / 9.0, 0.1, 100.0)
+            * Mat4::look_at_rh(cam, Vec3::ZERO, Vec3::Y);
 
-        let result = pick_entity(&world, &[e], camera_pos, view_proj, 0.0, 0.0, 0.5);
-        assert!(result.is_none());
+        assert!(pick_entity(&world, &[e], &query(cam, vp, 640.0, 360.0, 0.5)).is_none());
     }
 
     #[test]
     fn pick_entity_empty_world() {
         let world = kiran::World::new();
-        let result = pick_entity(&world, &[], Vec3::ZERO, Mat4::IDENTITY, 0.0, 0.0, 1.0);
-        assert!(result.is_none());
+        assert!(
+            pick_entity(
+                &world,
+                &[],
+                &query(Vec3::ZERO, Mat4::IDENTITY, 0.0, 0.0, 1.0)
+            )
+            .is_none()
+        );
     }
 
     #[test]
@@ -241,16 +244,14 @@ mod tests {
         world.insert_component(e, Position(Vec3::ZERO)).unwrap();
         world.despawn(e).unwrap();
 
-        let result = pick_entity(
-            &world,
-            &[e],
-            Vec3::new(0.0, 0.0, 5.0),
-            Mat4::IDENTITY,
-            0.0,
-            0.0,
-            1.0,
+        assert!(
+            pick_entity(
+                &world,
+                &[e],
+                &query(Vec3::new(0.0, 0.0, 5.0), Mat4::IDENTITY, 50.0, 50.0, 1.0),
+            )
+            .is_none()
         );
-        assert!(result.is_none());
     }
 
     #[test]
@@ -266,15 +267,13 @@ mod tests {
         let e = world.spawn();
         world.insert_component(e, Position(Vec3::ZERO)).unwrap();
 
-        let result = pick_entity(
-            &world,
-            &[e],
-            Vec3::new(0.0, 0.0, 5.0),
-            Mat4::ZERO,
-            0.0,
-            0.0,
-            1.0,
+        assert!(
+            pick_entity(
+                &world,
+                &[e],
+                &query(Vec3::new(0.0, 0.0, 5.0), Mat4::ZERO, 50.0, 50.0, 1.0),
+            )
+            .is_none()
         );
-        assert!(result.is_none());
     }
 }

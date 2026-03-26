@@ -177,6 +177,52 @@ impl TerrainEditor {
         self.dirty = true;
     }
 
+    /// Generate procedural terrain using fractional Brownian motion (Perlin noise).
+    ///
+    /// - `frequency`: Controls the scale of features (higher = more detail).
+    /// - `octaves`: Number of noise layers (more = finer detail).
+    /// - `lacunarity`: Frequency multiplier per octave (typically 2.0).
+    /// - `gain`: Amplitude multiplier per octave (typically 0.5).
+    pub fn generate_fbm(&mut self, frequency: f64, octaves: usize, lacunarity: f64, gain: f64) {
+        let cols = (self.width + 1) as usize;
+        let rows = (self.depth + 1) as usize;
+
+        for z in 0..rows {
+            for x in 0..cols {
+                let nx = x as f64 * frequency / self.width as f64;
+                let nz = z as f64 * frequency / self.depth as f64;
+                let h =
+                    hisab::calc::fbm_2d(hisab::calc::perlin_2d, nx, nz, octaves, lacunarity, gain);
+                self.heights[z * cols + x] = h as f32;
+            }
+        }
+        self.dirty = true;
+        tracing::info!(
+            frequency,
+            octaves,
+            lacunarity,
+            gain,
+            "terrain generated with FBM noise"
+        );
+    }
+
+    /// Generate terrain using simple Perlin noise at a given frequency.
+    pub fn generate_perlin(&mut self, frequency: f64) {
+        let cols = (self.width + 1) as usize;
+        let rows = (self.depth + 1) as usize;
+
+        for z in 0..rows {
+            for x in 0..cols {
+                let nx = x as f64 * frequency / self.width as f64;
+                let nz = z as f64 * frequency / self.depth as f64;
+                let h = hisab::calc::perlin_2d(nx, nz);
+                self.heights[z * cols + x] = h as f32;
+            }
+        }
+        self.dirty = true;
+        tracing::info!(frequency, "terrain generated with Perlin noise");
+    }
+
     /// Get the height at a specific grid position.
     #[must_use]
     pub fn height_at(&self, x: u32, z: u32) -> f32 {
@@ -448,5 +494,24 @@ mod tests {
         let edge = e.heights[(5 * 11 + 7) as usize];
         // Center should be raised more than edge
         assert!(center > edge);
+    }
+
+    #[test]
+    fn generate_perlin_produces_varied_heights() {
+        let mut e = TerrainEditor::new(16, 16);
+        e.generate_perlin(4.0);
+        let (min, max) = e.height_range();
+        // Perlin noise should produce non-flat terrain
+        assert!(max > min);
+        assert!(e.dirty);
+    }
+
+    #[test]
+    fn generate_fbm_produces_varied_heights() {
+        let mut e = TerrainEditor::new(16, 16);
+        e.generate_fbm(4.0, 4_usize, 2.0, 0.5);
+        let (min, max) = e.height_range();
+        assert!(max > min);
+        assert!(e.dirty);
     }
 }

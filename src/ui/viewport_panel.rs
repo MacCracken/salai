@@ -24,22 +24,16 @@ pub fn viewport_panel_with_picking(
         && let Some((world, entities, state)) = picking
         && let Some(pointer_pos) = response.interact_pointer_pos()
     {
-        let (ndc_x, ndc_y) = crate::picking::pixel_to_ndc(
-            pointer_pos.x - rect.left(),
-            pointer_pos.y - rect.top(),
-            rect.width(),
-            rect.height(),
-        );
-        let view_proj = viewport.camera.view_projection();
-        if let Some(hit) = crate::picking::pick_entity(
-            world,
-            entities,
-            viewport.camera.position,
-            view_proj,
-            ndc_x,
-            ndc_y,
-            0.5,
-        ) {
+        let query = crate::picking::PickQuery {
+            camera_pos: viewport.camera.position,
+            view_proj: viewport.camera.view_projection(),
+            pixel_x: pointer_pos.x - rect.left(),
+            pixel_y: pointer_pos.y - rect.top(),
+            viewport_width: rect.width(),
+            viewport_height: rect.height(),
+            pick_radius: 0.5,
+        };
+        if let Some(hit) = crate::picking::pick_entity(world, entities, &query) {
             let modifiers = ui.input(|i| i.modifiers);
             if modifiers.shift {
                 state.select_add(hit.entity);

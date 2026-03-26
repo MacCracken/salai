@@ -32,7 +32,7 @@ dhvani = "0.22"
 ranga = "0.24"
 
 # Core
-hisab = "0.22"
+hisab = "1.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rfd = "0.15"

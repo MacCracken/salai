@@ -108,6 +108,47 @@ pub fn color_to_hex(color: [u8; 4]) -> String {
     )
 }
 
+/// Convert an sRGB [u8; 4] color to linear RGB [f32; 3].
+#[must_use]
+#[inline]
+pub fn srgb_to_linear(color: [u8; 4]) -> [f32; 3] {
+    [
+        hisab::transforms::srgb_to_linear(color[0] as f32 / 255.0),
+        hisab::transforms::srgb_to_linear(color[1] as f32 / 255.0),
+        hisab::transforms::srgb_to_linear(color[2] as f32 / 255.0),
+    ]
+}
+
+/// Convert a linear RGB [f32; 3] color to sRGB [u8; 4] with full alpha.
+#[must_use]
+#[inline]
+pub fn linear_to_srgb(linear: [f32; 3]) -> [u8; 4] {
+    [
+        (hisab::transforms::linear_to_srgb(linear[0]) * 255.0).round() as u8,
+        (hisab::transforms::linear_to_srgb(linear[1]) * 255.0).round() as u8,
+        (hisab::transforms::linear_to_srgb(linear[2]) * 255.0).round() as u8,
+        255,
+    ]
+}
+
+/// Convert an sRGB [u8; 4] color to Oklab perceptual color space.
+///
+/// Returns `(L, a, b)` where L is lightness (0-1) and a,b are chroma axes.
+#[must_use]
+#[inline]
+pub fn srgb_to_oklab(color: [u8; 4]) -> (f32, f32, f32) {
+    let lin = srgb_to_linear(color);
+    hisab::transforms::linear_to_oklab(lin[0], lin[1], lin[2])
+}
+
+/// Convert an Oklab `(L, a, b)` color to sRGB [u8; 4].
+#[must_use]
+#[inline]
+pub fn oklab_to_srgb(l: f32, a: f32, b: f32) -> [u8; 4] {
+    let (r, g, b) = hisab::transforms::oklab_to_linear(l, a, b);
+    linear_to_srgb([r.clamp(0.0, 1.0), g.clamp(0.0, 1.0), b.clamp(0.0, 1.0)])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -197,5 +238,35 @@ mod tests {
         // Data too short for claimed dimensions
         let result = generate_thumbnail(vec![0; 4], 100, 100, 50);
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn srgb_linear_roundtrip() {
+        let original = [180, 60, 220, 255];
+        let linear = srgb_to_linear(original);
+        let back = linear_to_srgb(linear);
+        // Allow ±1 for rounding
+        for i in 0..3 {
+            assert!((original[i] as i16 - back[i] as i16).abs() <= 1);
+        }
+    }
+
+    #[test]
+    fn oklab_roundtrip() {
+        let original = [200, 100, 50, 255];
+        let (l, a, b) = srgb_to_oklab(original);
+        let back = oklab_to_srgb(l, a, b);
+        for i in 0..3 {
+            assert!((original[i] as i16 - back[i] as i16).abs() <= 2);
+        }
+    }
+
+    #[test]
+    fn srgb_to_linear_black_white() {
+        let black = srgb_to_linear([0, 0, 0, 255]);
+        assert!(black.iter().all(|&v| v < 0.001));
+
+        let white = srgb_to_linear([255, 255, 255, 255]);
+        assert!(white.iter().all(|&v| (v - 1.0).abs() < 0.01));
     }
 }

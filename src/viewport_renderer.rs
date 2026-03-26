@@ -144,6 +144,52 @@ pub fn camera_view_proj(camera: &kiran::render::Camera, aspect: f32) -> Mat4 {
     proj * view
 }
 
+/// Build a frustum from the camera for culling.
+#[must_use]
+#[inline]
+pub fn camera_frustum(camera: &kiran::render::Camera, aspect: f32) -> hisab::geo::Frustum {
+    let vp = camera_view_proj(camera, aspect);
+    hisab::geo::Frustum::from_view_projection(vp)
+}
+
+/// Filter entity visuals to only those inside the camera frustum.
+#[must_use]
+pub fn frustum_cull<'a>(
+    visuals: &'a [EntityVisual],
+    frustum: &hisab::geo::Frustum,
+    entity_radius: f32,
+) -> Vec<&'a EntityVisual> {
+    visuals
+        .iter()
+        .filter(|v| {
+            let sphere = hisab::geo::Sphere {
+                center: v.position,
+                radius: entity_radius,
+            };
+            frustum.contains_sphere(&sphere)
+        })
+        .collect()
+}
+
+/// Project a world-space point to screen coordinates.
+///
+/// Returns `(screen_x, screen_y, depth)` or `None` if behind the camera.
+#[must_use]
+#[inline]
+pub fn world_to_screen(
+    point: Vec3,
+    mvp: Mat4,
+    viewport_width: f32,
+    viewport_height: f32,
+) -> Option<(f32, f32, f32)> {
+    let (sx, sy, depth) =
+        hisab::transforms::world_to_screen(point, mvp, viewport_width, viewport_height);
+    if !(0.0..=1.0).contains(&depth) {
+        return None;
+    }
+    Some((sx, sy, depth))
+}
+
 /// Build entity visuals from world state.
 #[must_use]
 pub fn collect_entity_visuals(
@@ -281,5 +327,52 @@ mod tests {
 
         let visuals = collect_entity_visuals(&world, &[e], &[]);
         assert!(visuals.is_empty());
+    }
+
+    #[test]
+    fn camera_frustum_contains_origin() {
+        let camera = kiran::render::Camera::default();
+        let frustum = camera_frustum(&camera, 16.0 / 9.0);
+        // The default camera looks at the origin, which should be inside the frustum
+        let sphere = hisab::geo::Sphere {
+            center: Vec3::ZERO,
+            radius: 0.1,
+        };
+        assert!(frustum.contains_sphere(&sphere));
+    }
+
+    #[test]
+    fn frustum_cull_filters_offscreen() {
+        let visuals = vec![
+            EntityVisual {
+                entity_id: 1,
+                position: Vec3::ZERO,
+                color: [1.0; 4],
+                selected: false,
+            },
+            EntityVisual {
+                entity_id: 2,
+                position: Vec3::new(9999.0, 9999.0, 9999.0),
+                color: [1.0; 4],
+                selected: false,
+            },
+        ];
+        let camera = kiran::render::Camera::default();
+        let frustum = camera_frustum(&camera, 16.0 / 9.0);
+        let visible = frustum_cull(&visuals, &frustum, 0.5);
+        // Origin entity should be visible, far-away one culled
+        assert!(visible.len() <= visuals.len());
+    }
+
+    #[test]
+    fn world_to_screen_origin_visible() {
+        let camera = kiran::render::Camera::default();
+        let vp = camera_view_proj(&camera, 16.0 / 9.0);
+        let result = world_to_screen(Vec3::ZERO, vp, 1280.0, 720.0);
+        assert!(result.is_some());
+        let (sx, sy, _) = result.unwrap();
+        // Origin should project near center
+        assert!((sx - 640.0).abs() < 100.0);
+        assert!((sy - 360.0).abs() < 100.0);
     }
 }

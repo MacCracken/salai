@@ -1628,9 +1628,9 @@ checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 
 [[package]]
 name = "hisab"
-version = "0.22.4"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c69ef9a41596ee017fb670eb47a281c292362096c35bc44a4ae77b7b6502b266"
+checksum = "fccb4f2fec90170ee6835d1a57ceda45fc4a978603e937f78a405d95e6318d89"
 dependencies = [
  "glam",
  "serde",
@@ -3340,7 +3340,7 @@ dependencies = [
 
 [[package]]
 name = "soorat"
-version = "0.24.3"
+version = "0.26.3"
 dependencies = [
  "bytemuck",
  "gltf",

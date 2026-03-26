@@ -49,11 +49,113 @@ pub struct AnimTrack {
     pub keyframes: Vec<AnimKeyframe>,
 }
 
+/// Easing mode for keyframe interpolation.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum EasingMode {
+    /// Linear interpolation (no easing).
+    #[default]
+    Linear,
+    /// Quadratic ease-in.
+    EaseIn,
+    /// Quadratic ease-out.
+    EaseOut,
+    /// Quadratic ease-in-out.
+    EaseInOut,
+    /// Cubic ease-in.
+    EaseInCubic,
+    /// Cubic ease-out.
+    EaseOutCubic,
+    /// Quintic smootherstep.
+    Smooth,
+}
+
+impl EasingMode {
+    /// Apply this easing function to a normalized `t` in `[0, 1]`.
+    #[must_use]
+    #[inline]
+    pub fn apply(self, t: f32) -> f32 {
+        match self {
+            Self::Linear => t,
+            Self::EaseIn => hisab::calc::ease_in(t),
+            Self::EaseOut => hisab::calc::ease_out(t),
+            Self::EaseInOut => hisab::calc::ease_in_out(t),
+            Self::EaseInCubic => hisab::calc::ease_in_cubic(t),
+            Self::EaseOutCubic => hisab::calc::ease_out_cubic(t),
+            Self::Smooth => hisab::calc::ease_in_out_smooth(t),
+        }
+    }
+
+    /// All available easing modes for UI display.
+    pub const ALL: &[EasingMode] = &[
+        Self::Linear,
+        Self::EaseIn,
+        Self::EaseOut,
+        Self::EaseInOut,
+        Self::EaseInCubic,
+        Self::EaseOutCubic,
+        Self::Smooth,
+    ];
+
+    /// Human-readable label.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Linear => "Linear",
+            Self::EaseIn => "Ease In",
+            Self::EaseOut => "Ease Out",
+            Self::EaseInOut => "Ease In/Out",
+            Self::EaseInCubic => "Ease In (Cubic)",
+            Self::EaseOutCubic => "Ease Out (Cubic)",
+            Self::Smooth => "Smooth",
+        }
+    }
+}
+
 /// A keyframe in the editor.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnimKeyframe {
     pub time: f32,
     pub values: Vec<f32>,
+    /// Easing mode for interpolation from this keyframe to the next.
+    #[serde(default)]
+    pub easing: EasingMode,
+}
+
+/// Sample a track's values at an arbitrary time using eased interpolation.
+///
+/// Returns `None` if the track has no keyframes.
+#[must_use]
+pub fn sample_track(track: &AnimTrack, time: f32) -> Option<Vec<f32>> {
+    let keys = &track.keyframes;
+    if keys.is_empty() {
+        return None;
+    }
+    if keys.len() == 1 || time <= keys[0].time {
+        return Some(keys[0].values.clone());
+    }
+    if time >= keys[keys.len() - 1].time {
+        return Some(keys[keys.len() - 1].values.clone());
+    }
+
+    // Find surrounding keyframes
+    let idx = keys.partition_point(|k| k.time <= time).saturating_sub(1);
+    let a = &keys[idx];
+    let b = &keys[idx + 1];
+    let span = b.time - a.time;
+    if span < f32::EPSILON {
+        return Some(a.values.clone());
+    }
+    let raw_t = (time - a.time) / span;
+    let t = a.easing.apply(raw_t);
+
+    Some(
+        a.values
+            .iter()
+            .zip(b.values.iter())
+            .map(|(&va, &vb)| hisab::transforms::lerp_f32(va, vb, t))
+            .collect(),
+    )
 }
 
 impl AnimationEditor {
@@ -71,6 +173,7 @@ impl AnimationEditor {
                     .map(|kf| AnimKeyframe {
                         time: kf.time,
                         values: kf.value.clone(),
+                        easing: EasingMode::default(),
                     })
                     .collect(),
             })
@@ -109,6 +212,7 @@ impl AnimationEditor {
             track.keyframes.push(AnimKeyframe {
                 time: self.playhead,
                 values,
+                easing: EasingMode::default(),
             });
             track.keyframes.sort_by(|a, b| a.time.total_cmp(&b.time));
             tracing::debug!(track = track_index, time = self.playhead, "keyframe added");
@@ -311,10 +415,12 @@ mod tests {
                         AnimKeyframe {
                             time: 0.0,
                             values: vec![0.0, 0.0, 0.0],
+                            easing: EasingMode::default(),
                         },
                         AnimKeyframe {
                             time: 1.0,
                             values: vec![1.0, 1.0, 1.0],
+                            easing: EasingMode::default(),
                         },
                     ],
                 }],
@@ -339,10 +445,12 @@ mod tests {
                         AnimKeyframe {
                             time: 0.0,
                             values: vec![0.0],
+                            easing: EasingMode::default(),
                         },
                         AnimKeyframe {
                             time: 2.0,
                             values: vec![2.0],
+                            easing: EasingMode::default(),
                         },
                     ],
                 }],
@@ -388,5 +496,106 @@ mod tests {
         };
         e.tick(1.0);
         assert_eq!(e.playhead, 0.0);
+    }
+
+    #[test]
+    fn easing_mode_labels() {
+        for &mode in EasingMode::ALL {
+            assert!(!mode.label().is_empty());
+        }
+    }
+
+    #[test]
+    fn easing_mode_apply_bounds() {
+        for &mode in EasingMode::ALL {
+            let at_zero = mode.apply(0.0);
+            let at_one = mode.apply(1.0);
+            assert!((at_zero).abs() < 0.01, "{}: f(0) = {at_zero}", mode.label());
+            assert!(
+                (at_one - 1.0).abs() < 0.01,
+                "{}: f(1) = {at_one}",
+                mode.label()
+            );
+        }
+    }
+
+    #[test]
+    fn sample_track_linear() {
+        let track = AnimTrack {
+            target: "t".into(),
+            property: "p".into(),
+            keyframes: vec![
+                AnimKeyframe {
+                    time: 0.0,
+                    values: vec![0.0],
+                    easing: EasingMode::Linear,
+                },
+                AnimKeyframe {
+                    time: 1.0,
+                    values: vec![10.0],
+                    easing: EasingMode::Linear,
+                },
+            ],
+        };
+        let v = sample_track(&track, 0.5).unwrap();
+        assert!((v[0] - 5.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn sample_track_eased() {
+        let track = AnimTrack {
+            target: "t".into(),
+            property: "p".into(),
+            keyframes: vec![
+                AnimKeyframe {
+                    time: 0.0,
+                    values: vec![0.0],
+                    easing: EasingMode::EaseIn,
+                },
+                AnimKeyframe {
+                    time: 1.0,
+                    values: vec![10.0],
+                    easing: EasingMode::Linear,
+                },
+            ],
+        };
+        // EaseIn at t=0.5 should be < 5.0 (slower start)
+        let v = sample_track(&track, 0.5).unwrap();
+        assert!(v[0] < 5.0);
+        assert!(v[0] > 0.0);
+    }
+
+    #[test]
+    fn sample_track_empty() {
+        let track = AnimTrack {
+            target: "t".into(),
+            property: "p".into(),
+            keyframes: vec![],
+        };
+        assert!(sample_track(&track, 0.5).is_none());
+    }
+
+    #[test]
+    fn sample_track_clamp_edges() {
+        let track = AnimTrack {
+            target: "t".into(),
+            property: "p".into(),
+            keyframes: vec![
+                AnimKeyframe {
+                    time: 1.0,
+                    values: vec![10.0],
+                    easing: EasingMode::Linear,
+                },
+                AnimKeyframe {
+                    time: 2.0,
+                    values: vec![20.0],
+                    easing: EasingMode::Linear,
+                },
+            ],
+        };
+        // Before first keyframe
+        assert_eq!(sample_track(&track, 0.0).unwrap(), vec![10.0]);
+        // After last keyframe
+        assert_eq!(sample_track(&track, 5.0).unwrap(), vec![20.0]);
     }
 }
